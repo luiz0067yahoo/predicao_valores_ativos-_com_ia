@@ -91,6 +91,51 @@ ASSETS = {
         "description": "Contratos Futuros de Gado de Recria/Engorda",
         "category": "Pecuária",
         "currency": "USD"
+    },
+    "IVVB11 (iShares S&P 500)": {
+        "ticker": "IVVB11.SA",
+        "description": "iShares S&P 500 Fundo de Índice (Exposto ao Dólar)",
+        "category": "ETFs (S&P 500)",
+        "currency": "BRL",
+        "sp500": "Sim",
+        "cambio": "Exposto ao dólar",
+        "cotacao_consultada": "~R$ 445"
+    },
+    "SPXI11 (IT NOW S&P500 TRN)": {
+        "ticker": "SPXI11.SA",
+        "description": "IT NOW S&P500 TRN Fundo de Índice (Exposto ao Dólar)",
+        "category": "ETFs (S&P 500)",
+        "currency": "BRL",
+        "sp500": "Sim",
+        "cambio": "Exposto ao dólar",
+        "cotacao_consultada": "~R$ 54"
+    },
+    "SPXB11 (BTG Pactual S&P 500)": {
+        "ticker": "SPXB11.SA",
+        "description": "BTG Pactual S&P 500 Fundo de Índice (Exposto ao Dólar)",
+        "category": "ETFs (S&P 500)",
+        "currency": "BRL",
+        "sp500": "Sim",
+        "cambio": "Exposto ao dólar",
+        "cotacao_consultada": "—"
+    },
+    "SPXR11 (IT NOW S&P 500 Futures Quanto)": {
+        "ticker": "SPXR11.SA",
+        "description": "IT NOW S&P 500 Futures Quanto (Protegido do Dólar / Hedge)",
+        "category": "ETFs (S&P 500)",
+        "currency": "BRL",
+        "sp500": "S&P 500 Futures",
+        "cambio": "Protegido do dólar",
+        "cotacao_consultada": "—"
+    },
+    "SPBZ11 (BTG Pactual S&P 500 Futures Quanto)": {
+        "ticker": "SPBZ11.SA",
+        "description": "BTG Pactual S&P 500 Futures Quanto (Protegido do Dólar / Hedge)",
+        "category": "ETFs (S&P 500)",
+        "currency": "BRL",
+        "sp500": "S&P 500 Futures",
+        "cambio": "Protegido do dólar",
+        "cotacao_consultada": "—"
     }
 }
 

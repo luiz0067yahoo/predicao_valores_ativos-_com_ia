@@ -50,7 +50,17 @@ class DataFetcher:
             "BGI=F": "boi_gordo_b3.xls",
             "CL=F": "petroleo_wti.xls",
             "GC=F": "ouro.xls",
-            "ETH-USD": "ethereum.xls"
+            "ETH-USD": "ethereum.xls",
+            "IVVB11.SA": "etf_ivvb11.xls",
+            "SPXI11.SA": "etf_spxi11.xls",
+            "SPXB11.SA": "etf_spxb11.xls",
+            "SPXR11.SA": "etf_spxr11.xls",
+            "SPBZ11.SA": "etf_spbz11.xls",
+            "IVVB11": "etf_ivvb11.xls",
+            "SPXI11": "etf_spxi11.xls",
+            "SPXB11": "etf_spxb11.xls",
+            "SPXR11": "etf_spxr11.xls",
+            "SPBZ11": "etf_spbz11.xls"
         }
         if ticker in mapa_conhecido:
             nome_arquivo = mapa_conhecido[ticker]
@@ -151,6 +161,11 @@ class DataFetcher:
         dentro da pasta db/. Se estiver coberto, carrega direto do Excel. Caso contrário, baixa
         os dados do Yahoo Finance, mescla com os dados prévios e salva a planilha atualizada.
         """
+        # Normaliza tickers de ETFs e ativos da B3 caso venham sem o sufixo .SA
+        etfs_b3 = {"IVVB11", "SPXI11", "SPXB11", "SPXR11", "SPBZ11"}
+        if ticker.upper() in etfs_b3:
+            ticker = f"{ticker.upper()}.SA"
+
         agora = pd.Timestamp.now()
         mapa_dias_periodo = {
             "1mo": 35,

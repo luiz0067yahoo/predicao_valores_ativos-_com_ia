@@ -114,7 +114,22 @@ def _extrair_parametros_requisicao(dados: Dict[str, Any]) -> Dict[str, Any]:
         moeda = "Unidade"
     else:
         if ativo_selecionado not in ASSETS:
-            raise ValueError(f"Ativo '{ativo_selecionado}' não reconhecido no mapeamento.")
+            # Tenta resolver por código ou ticker (ex: IVVB11, IVVB11.SA, SPXI11, etc.)
+            encontrado = None
+            ativo_norm = ativo_selecionado.strip().upper()
+            for chave, info in ASSETS.items():
+                tickers_candidatos = [
+                    chave.upper(),
+                    info["ticker"].upper(),
+                    info["ticker"].upper().replace(".SA", "")
+                ]
+                if ativo_norm in tickers_candidatos or chave.upper().startswith(ativo_norm):
+                    encontrado = chave
+                    break
+            if encontrado:
+                ativo_selecionado = encontrado
+            else:
+                raise ValueError(f"Ativo '{ativo_selecionado}' não reconhecido no mapeamento.")
         informacoes_ativo = ASSETS[ativo_selecionado]
         ticker = informacoes_ativo["ticker"]
         nome_ativo = ativo_selecionado
@@ -780,9 +795,25 @@ def iniciar_simulacao_carteira():
             nome_ativo = ativo
             moeda = ASSETS[ativo].get("currency", "BRL")
         else:
-            ticker = custom_ticker or "PETR4.SA"
-            nome_ativo = ativo
-            moeda = "BRL"
+            encontrado = None
+            ativo_norm = ativo.strip().upper()
+            for chave, info in ASSETS.items():
+                tickers_candidatos = [
+                    chave.upper(),
+                    info["ticker"].upper(),
+                    info["ticker"].upper().replace(".SA", "")
+                ]
+                if ativo_norm in tickers_candidatos or chave.upper().startswith(ativo_norm):
+                    encontrado = chave
+                    break
+            if encontrado:
+                ticker = ASSETS[encontrado]["ticker"]
+                nome_ativo = encontrado
+                moeda = ASSETS[encontrado].get("currency", "BRL")
+            else:
+                ticker = custom_ticker or "PETR4.SA"
+                nome_ativo = ativo
+                moeda = "BRL"
 
         capital = float(dados.get("capital", dados.get("capital_inicial", 10000.0)))
         aporte = float(dados.get("aporte_periodico", 0.0))

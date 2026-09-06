@@ -26,6 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
     algorithmDesc: document.getElementById('algorithm-desc'),
     algoBadgeHeader: document.getElementById('algo-badge-header'),
     selectAsset: document.getElementById('select-asset'),
+    assetDesc: document.getElementById('asset-desc'),
     customTickerGroup: document.getElementById('custom-ticker-group'),
     inputCustomTicker: document.getElementById('input-custom-ticker'),
     selectPeriod: document.getElementById('select-period'),
@@ -836,10 +837,23 @@ document.addEventListener('DOMContentLoaded', () => {
     if (val === 'Personalizado') {
       elements.customTickerGroup.classList.remove('hidden');
       state.currentCurrency = 'Unidade';
+      if (elements.assetDesc) {
+        elements.assetDesc.textContent = 'Ativo customizado via Yahoo Finance (ex: PETR4.SA, AAPL, BTC-USD)';
+      }
     } else {
       elements.customTickerGroup.classList.add('hidden');
       const info = state.assetsConfig[val];
       state.currentCurrency = info ? info.currency : 'USD';
+      if (elements.assetDesc && info) {
+        let texto = info.description || val;
+        if (info.cambio) {
+          texto += ` • Câmbio: ${info.cambio}`;
+        }
+        if (info.cotacao_consultada && info.cotacao_consultada !== '—') {
+          texto += ` • Ref: ${info.cotacao_consultada}`;
+        }
+        elements.assetDesc.textContent = texto;
+      }
     }
   }
 
