@@ -59,3 +59,46 @@ def test_prepare_lagged_features():
     # Quantidade de colunas: lookback lags + 4 indicadores + 1 bias = lookback + 5
     assert X.shape[1] == lookback + 5
     assert "last_close" in scaler_params
+
+
+def test_btc_brl_synthesis(tmp_path):
+    """Verifica se a síntese de BTC-BRL combina corretamente BTC-USD e USDBRL=X."""
+    from unittest.mock import patch
+
+    datas = pd.date_range("2024-01-01", periods=10, freq="D")
+    df_btc = pd.DataFrame({
+        "Open": [50000.0] * 10,
+        "High": [51000.0] * 10,
+        "Low": [49000.0] * 10,
+        "Close": [50000.0] * 10,
+        "Volume": [100.0] * 10
+    }, index=datas)
+
+    df_usd = pd.DataFrame({
+        "Open": [5.0] * 10,
+        "High": [5.1] * 10,
+        "Low": [4.9] * 10,
+        "Close": [5.0] * 10,
+        "Volume": [0] * 10
+    }, index=datas)
+
+    fetcher = DataFetcher(use_cache=False)
+    fetcher.db_dir = tmp_path
+
+    def mock_fetch(ticker, **kwargs):
+        if ticker == "BTC-USD":
+            return df_btc
+        if ticker == "USDBRL=X":
+            return df_usd
+        raise ValueError(f"Ticker inesperado {ticker}")
+
+    with patch.object(fetcher, "fetch_asset_data", side_effect=mock_fetch):
+        df_result = fetcher._fetch_btc_brl(period="10d")
+
+    assert not df_result.empty
+    assert len(df_result) == 10
+    assert "Close" in df_result.columns
+    # 50000 * 5.0 = 250000.0
+    assert np.isclose(df_result["Close"].iloc[0], 250000.0)
+    assert not df_result.isna().any().any()
+

@@ -213,7 +213,7 @@ document.addEventListener('DOMContentLoaded', () => {
       name: 'horizon_value',
       label: 'Horizonte de Projeção',
       type: 'number',
-      val: 5,
+      val: 2,
       min: 1,
       max: 365,
       step: 1,
@@ -224,12 +224,12 @@ document.addEventListener('DOMContentLoaded', () => {
       name: 'horizon_unit',
       label: 'Unidade do Horizonte',
       type: 'select',
-      val: 'dias',
+      val: 'anos',
       options: [
         { value: 'dias', text: 'Dias' },
         { value: 'semanas', text: 'Semanas' },
         { value: 'meses', text: 'Meses' },
-        { value: 'anos', text: 'Anos' }
+        { value: 'anos', text: 'Anos' },
       ],
       hint: 'Escala temporal calibrada'
     });
@@ -609,7 +609,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const group = document.createElement('div');
       group.className = 'form-group';
       if (f.type === 'select') {
-        const optionsHtml = (f.options || []).map(opt => 
+        const optionsHtml = (f.options || []).map(opt =>
           `<option value="${opt.value}" ${opt.value === f.val ? 'selected' : ''}>${opt.text}</option>`
         ).join('');
         group.innerHTML = `

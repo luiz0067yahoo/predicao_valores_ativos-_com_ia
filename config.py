@@ -44,6 +44,18 @@ ASSETS = {
         "category": "Criptomoedas",
         "currency": "BRL"
     },
+    "Ethereum (ETH/USD)": {
+        "ticker": "ETH-USD",
+        "description": "Cotação do Ethereum em Dólares",
+        "category": "Criptomoedas",
+        "currency": "USD"
+    },
+    "Ethereum (ETH/BRL)": {
+        "ticker": "ETH-BRL",
+        "description": "Cotação do Ethereum em Reais",
+        "category": "Criptomoedas",
+        "currency": "BRL"
+    },
     "Ibovespa (IBOV)": {
         "ticker": "^BVSP",
         "description": "Índice Bovespa (Referência do Mercado Brasileiro)",

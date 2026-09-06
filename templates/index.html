@@ -1,15 +1,19 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AI Asset Predictor | Modelagem Preditiva com IA & Séries Temporais</title>
-  <meta name="description" content="Plataforma de alta precisão com 11 algoritmos de Inteligência Artificial, Aprendizado de Máquina, Deep Learning e Simulação Multiagente MiroFish para séries temporais.">
+  <meta name="description"
+    content="Plataforma de alta precisão com 11 algoritmos de Inteligência Artificial, Aprendizado de Máquina, Deep Learning e Simulação Multiagente MiroFish para séries temporais.">
 
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap"
+    rel="stylesheet">
 
   <!-- Chart.js via CDN -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
@@ -17,6 +21,7 @@
   <!-- Estilos Customizados -->
   <link rel="stylesheet" href="/static/css/style.css">
 </head>
+
 <body class="dark-theme">
 
   <!-- Top Navigation Bar -->
@@ -36,16 +41,24 @@
         <span class="pulse-dot"></span>
         <span id="connection-text">Pronto para Otimização</span>
       </div>
-      <a href="/portfolio-simulator" class="btn btn-primary" style="text-decoration: none;" title="Abrir Simulador de Investimentos Multi-Algoritmo M.A.P.P.">
-        <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+      <a href="/portfolio-simulator" class="btn btn-primary" style="text-decoration: none;"
+        title="Abrir Simulador de Investimentos Multi-Algoritmo M.A.P.P.">
+        <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+        </svg>
         <span>Simulador MAPP</span>
       </a>
       <button id="btn-view-history" class="btn btn-glass" title="Ver Histórico de Ensaios">
-        <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
         <span>Histórico</span>
       </button>
       <button id="btn-view-reports" class="btn btn-glass" title="Ver Relatórios PDF/DOCX Gerados">
-        <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+        <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path
+            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        </svg>
         <span>Relatórios Arquivados</span>
       </button>
     </div>
@@ -101,7 +114,8 @@
         <!-- Ticker Personalizado (exibido apenas se selecionado Custom) -->
         <div id="custom-ticker-group" class="form-group hidden">
           <label for="input-custom-ticker">Código do Ticker (Yahoo Finance)</label>
-          <input type="text" id="input-custom-ticker" class="form-control font-mono uppercase" placeholder="Ex: PETR4.SA, AAPL, BTC-USD" value="PETR4.SA">
+          <input type="text" id="input-custom-ticker" class="form-control font-mono uppercase"
+            placeholder="Ex: PETR4.SA, AAPL, BTC-USD" value="PETR4.SA">
           <small class="helper-text">Insira qualquer ticker ativo negociado globalmente.</small>
         </div>
 
@@ -113,9 +127,9 @@
               <option value="1mo">1 Mês</option>
               <option value="3mo">3 Meses</option>
               <option value="6mo">6 Meses</option>
-              <option value="1y" selected>1 Ano</option>
+              <option value="1y">1 Ano</option>
               <option value="2y">2 Anos</option>
-              <option value="5y">5 Anos</option>
+              <option value="5y" selected>5 Anos</option>
               <option value="custom">Personalizado (Datas)</option>
             </select>
           </div>
@@ -177,12 +191,25 @@
 
         <!-- Ações de Exportação de Relatório (PDF e DOCX) -->
         <div class="report-actions-grid">
-          <button type="button" id="btn-export-pdf" class="btn btn-pdf" disabled title="Baixar Relatório Executivo em formato PDF">
-            <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          <button type="button" id="btn-export-pdf" class="btn btn-pdf" disabled
+            title="Baixar Relatório Executivo em formato PDF">
+            <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+              <line x1="16" y1="13" x2="8" y2="13" />
+              <line x1="16" y1="17" x2="8" y2="17" />
+              <polyline points="10 9 9 9 8 9" />
+            </svg>
             <span>Baixar PDF (.pdf)</span>
           </button>
-          <button type="button" id="btn-export-docx" class="btn btn-docx" disabled title="Baixar Relatório Executivo em formato Word">
-            <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+          <button type="button" id="btn-export-docx" class="btn btn-docx" disabled
+            title="Baixar Relatório Executivo em formato Word">
+            <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+              <line x1="12" y1="18" x2="12" y2="12" />
+              <line x1="9" y1="15" x2="15" y2="15" />
+            </svg>
             <span>Baixar Word (.docx)</span>
           </button>
         </div>
@@ -265,15 +292,21 @@
       <div class="dashboard-tabs-container">
         <div class="tab-nav-bar">
           <button class="tab-btn active" data-tab="tab-forecast">
-            <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/></svg>
+            <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
+            </svg>
             <span>Série Histórica & Projeção Futura</span>
           </button>
           <button class="tab-btn" data-tab="tab-convergence">
-            <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+            <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+            </svg>
             <span>Curva de Aprendizado / Convergência</span>
           </button>
           <button class="tab-btn" data-tab="tab-table">
-            <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h18v18H3zM3 9h18M3 15h18M9 3v18M15 3v18"/></svg>
+            <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 3h18v18H3zM3 9h18M3 15h18M9 3v18M15 3v18" />
+            </svg>
             <span>Tabela Passo a Passo (95% IC)</span>
           </button>
         </div>
@@ -284,7 +317,8 @@
             <div class="chart-header">
               <div class="chart-title-group">
                 <h3 id="chart-forecast-title">Cotação Histórica e Previsão Futura</h3>
-                <span class="chart-subtitle">Bandas sombreadas representam o intervalo de confiança empírico (95%)</span>
+                <span class="chart-subtitle">Bandas sombreadas representam o intervalo de confiança empírico
+                  (95%)</span>
               </div>
               <div class="chart-legend-custom">
                 <span class="legend-item"><span class="legend-dot dot-real"></span> Preço Real</span>
@@ -339,7 +373,8 @@
                 </thead>
                 <tbody id="forecast-table-body">
                   <tr>
-                    <td colspan="6" class="empty-state-cell">Nenhuma previsão calculada ainda. Clique em "Executar Previsão com IA".</td>
+                    <td colspan="6" class="empty-state-cell">Nenhuma previsão calculada ainda. Clique em "Executar
+                      Previsão com IA".</td>
                   </tr>
                 </tbody>
               </table>
@@ -422,4 +457,5 @@
   <!-- Script da Aplicação -->
   <script src="/static/js/app.js"></script>
 </body>
+
 </html>

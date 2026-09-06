@@ -4,6 +4,7 @@ Módulo de Extração de Dados e Engenharia de Atributos (Yahoo Finance)
 
 import logging
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import Dict, Optional, Tuple
 import numpy as np
 import pandas as pd
@@ -33,6 +34,7 @@ class DataFetcher:
         Retorna o caminho canônico do arquivo Excel no diretório db/.
         Exemplos:
         - BTC-USD -> db/bitcoin.xls
+        - BTC-BRL -> db/bitcoin_brl.xls
         - USDBRL=X -> db/dolar_usd_brl.xls
         - ^BVSP -> db/ibovespa.xls
         """
@@ -56,6 +58,85 @@ class DataFetcher:
             nome_sanitizado = ticker.lower().replace("^", "").replace("=", "_").replace("-", "_").replace(".", "_")
             nome_arquivo = f"{nome_sanitizado}.xls"
         return DB_DIR / nome_arquivo
+
+    def _fetch_btc_brl(
+        self,
+        period: Optional[str] = "1y",
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+        df_existente: Optional[pd.DataFrame] = None
+    ) -> pd.DataFrame:
+        """
+        Gera o histórico do par BTC-BRL sintetizado a partir de BTC-USD e USDBRL=X.
+        Como o Yahoo Finance descontinuou o ticker direto 'BTC-BRL', o valor é
+        sintetizado multiplicando o preço do BTC em dólares pela cotação do Dólar (USD/BRL).
+        Os dados de câmbio são interpolados e propagados para cobrir finais de semana e feriados.
+        """
+        logger.info("Sintetizando histórico de BTC-BRL a partir de BTC-USD e USDBRL=X...")
+        try:
+            df_btc = self.fetch_asset_data("BTC-USD", period=period, start_date=start_date, end_date=end_date)
+            df_usd = self.fetch_asset_data("USDBRL=X", period=period, start_date=start_date, end_date=end_date)
+        except Exception as e_sint:
+            logger.warning(f"Erro ao obter componentes para sintetizar BTC-BRL: {e_sint}")
+            if df_existente is not None and not df_existente.empty:
+                logger.warning("Utilizando histórico prévio do Excel como contingência.")
+                return df_existente
+            raise ValueError(f"Não foi possível obter dados para sintetizar BTC-BRL: {e_sint}") from e_sint
+
+        if df_btc is None or df_btc.empty:
+            if df_existente is not None and not df_existente.empty:
+                return df_existente
+            raise ValueError("Não foi possível obter cotações de BTC-USD para sintetizar BTC-BRL.")
+
+        if df_usd is None or df_usd.empty:
+            if df_existente is not None and not df_existente.empty:
+                return df_existente
+            raise ValueError("Não foi possível obter cotações de USDBRL=X para sintetizar BTC-BRL.")
+
+        # Alinha as datas de câmbio com as do Bitcoin (que opera 24/7)
+        todas_datas = df_btc.index.union(df_usd.index).sort_values()
+        usd_alinhado = df_usd.reindex(todas_datas).ffill().bfill().reindex(df_btc.index).ffill().bfill()
+
+        df_brl = pd.DataFrame(index=df_btc.index)
+        coluna_preco_usd = usd_alinhado["Close"]
+        coluna_open_usd = usd_alinhado["Open"] if "Open" in usd_alinhado.columns else coluna_preco_usd
+        coluna_high_usd = usd_alinhado["High"] if "High" in usd_alinhado.columns else coluna_preco_usd
+        coluna_low_usd = usd_alinhado["Low"] if "Low" in usd_alinhado.columns else coluna_preco_usd
+
+        df_brl["Close"] = df_btc["Close"] * coluna_preco_usd
+        df_brl["Open"] = df_btc["Open"] * coluna_open_usd
+        df_brl["High"] = df_btc["High"] * coluna_high_usd
+        df_brl["Low"] = df_btc["Low"] * coluna_low_usd
+        if "Volume" in df_btc.columns:
+            df_brl["Volume"] = df_btc["Volume"] * coluna_preco_usd
+
+        # Coerência de máximas e mínimas nos candles
+        df_brl["High"] = df_brl[["High", "Open", "Close"]].max(axis=1)
+        df_brl["Low"] = df_brl[["Low", "Open", "Close"]].min(axis=1)
+
+        df_brl = df_brl.ffill().bfill()
+
+        # Mescla com histórico prévio no Excel se houver
+        if df_existente is not None and not df_existente.empty:
+            colunas_comuns = [c for c in df_brl.columns if c in df_existente.columns]
+            df_completo = pd.concat([df_existente[colunas_comuns], df_brl[colunas_comuns]])
+            df_completo = df_completo[~df_completo.index.duplicated(keep="last")].sort_index()
+        else:
+            df_completo = df_brl
+
+        # Salva em db/bitcoin_brl.xls
+        caminho_excel = self.obter_caminho_arquivo_excel("BTC-BRL")
+        try:
+            self.db_dir.mkdir(parents=True, exist_ok=True)
+            df_completo.to_excel(caminho_excel, engine="openpyxl")
+            logger.info(
+                f"Histórico consolidado de BTC-BRL salvo em 'db/{caminho_excel.name}' "
+                f"({len(df_completo)} registros, de {df_completo.index.min().date()} a {df_completo.index.max().date()})."
+            )
+        except Exception as e_salvamento:
+            logger.warning(f"Não foi possível salvar {caminho_excel}: {e_salvamento}")
+
+        return df_completo
 
     def fetch_asset_data(
         self,
@@ -99,7 +180,7 @@ class DataFetcher:
             dias_req = dias_minimos_periodo.get(period or "1y", 350)
             data_inicio_req = agora - timedelta(days=dias_req)
             data_fim_req = agora
-            tolerancia_inicio = timedelta(days=0)
+            tolerancia_inicio = timedelta(days=5)
 
         caminho_excel = self.obter_caminho_arquivo_excel(ticker)
         df_existente: Optional[pd.DataFrame] = None
@@ -139,7 +220,16 @@ class DataFetcher:
             except Exception as e_leitura:
                 logger.warning(f"Erro ao ler cache Excel em {caminho_excel}: {e_leitura}. Baixando novos dados...")
 
-        # 2. Se não estiver coberto, efetua download no Yahoo Finance
+        # 2. Se for BTC-BRL, sintetiza a partir de BTC-USD e USDBRL=X (pois o Yahoo delistou o par direto)
+        if ticker == "BTC-BRL":
+            return self._fetch_btc_brl(
+                period=period,
+                start_date=start_date,
+                end_date=end_date,
+                df_existente=df_existente
+            )
+
+        # 3. Se não estiver coberto, efetua download no Yahoo Finance
         logger.info(f"Baixando dados para ticker {ticker} no Yahoo Finance...")
         try:
             yf_ticker = yf.Ticker(ticker)
