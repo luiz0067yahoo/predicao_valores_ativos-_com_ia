@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simulador de Investimento Multi-Algoritmo | M.A.P.P.</title>
+  <meta name="description" content="Simulador de carteira de investimentos e backtesting walk-forward comparativo com algoritmos de Inteligência Artificial e M.A.P.P.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body class="dark-theme">
+
+  <!-- Cabeçalho Principal -->
+  <header class="app-header">
+    <div class="header-content">
+      <div class="logo-area">
+        <div class="logo-badge">M.A.P.P.</div>
+        <div>
+          <h1 class="logo-title">Simulador de Investimento & Carteira</h1>
+          <p class="logo-subtitle">Market Analysis Pattern Prediction — Backtest Comparativo Walk-Forward</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <a href="/" class="btn-secondary" id="btn-back-dashboard">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+          Dashboard de Previsão
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Container Principal do Simulador -->
+  <main class="main-container simulator-layout">
+
+    <!-- Card do Wizard em 5 Etapas -->
+    <section class="card wizard-card" id="wizard-section">
+      <div class="wizard-header">
+        <div class="wizard-steps-indicator">
+          <div class="step-badge active" data-step="1">
+            <span class="step-num">1</span>
+            <span class="step-text">Ativo</span>
+          </div>
+          <div class="step-line"></div>
+          <div class="step-badge" data-step="2">
+            <span class="step-num">2</span>
+            <span class="step-text">Capital</span>
+          </div>
+          <div class="step-line"></div>
+          <div class="step-badge" data-step="3">
+            <span class="step-num">3</span>
+            <span class="step-text">Horizonte</span>
+          </div>
+          <div class="step-line"></div>
+          <div class="step-badge" data-step="4">
+            <span class="step-num">4</span>
+            <span class="step-text">Algoritmos</span>
+          </div>
+          <div class="step-line"></div>
+          <div class="step-badge" data-step="5">
+            <span class="step-num">5</span>
+            <span class="step-text">Parâmetros</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="wizard-body">
+        <!-- ETAPA 1: ATIVO -->
+        <div class="wizard-step-pane active" id="pane-step-1">
+          <h2 class="step-title">Etapa 1 — Seleção do Ativo e Mercado</h2>
+          <p class="step-desc">Escolha um ativo financeiro monitorado ou informe o código personalizado do Yahoo Finance.</p>
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="sim-select-asset">Ativo Monitorado</label>
+              <select id="sim-select-asset" class="form-control">
+                <option value="Petrobras (PETR4.SA)" selected>Petrobras PN (PETR4.SA) — Ações Brasil</option>
+                <option value="Vale (VALE3.SA)">Vale ON (VALE3.SA) — Mineração Brasil</option>
+                <option value="Bitcoin (BTC/USD)">Bitcoin (BTC-USD) — Criptomoeda</option>
+                <option value="Ethereum (ETH/USD)">Ethereum (ETH-USD) — Criptomoeda</option>
+                <option value="Dólar (USD/BRL)">Dólar Comercial (USDBRL=X) — Câmbio</option>
+                <option value="Ibovespa (^BVSP)">Índice Bovespa (^BVSP) — Mercado B3</option>
+                <option value="S&P 500 (^GSPC)">S&P 500 (^GSPC) — Bolsa dos EUA</option>
+                <option value="Soja CBOT (ZS=F)">Soja CBOT (ZS=F) — Commodity Agrícola</option>
+                <option value="Milho CBOT (ZC=F)">Milho CBOT (ZC=F) — Commodity Agrícola</option>
+                <option value="Ouro Futuro (GC=F)">Ouro (GC=F) — Metal Precioso</option>
+                <option value="custom">Personalizado (Digitar Ticker)</option>
+              </select>
+            </div>
+
+            <div class="form-group hidden" id="sim-group-custom-ticker">
+              <label for="sim-input-custom-ticker">Ticker Yahoo Finance</label>
+              <input type="text" id="sim-input-custom-ticker" class="form-control" placeholder="ex: ITUB4.SA, AAPL, NVDA, SOL-USD">
+            </div>
+
+            <div class="form-group">
+              <label for="sim-select-period">Período Histórico para Backtest</label>
+              <select id="sim-select-period" class="form-control">
+                <option value="1y">1 Ano</option>
+                <option value="2y">2 Anos</option>
+                <option value="5y" selected>5 Anos</option>
+                <option value="max">Máximo Disponível</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- ETAPA 2: CAPITAL -->
+        <div class="wizard-step-pane" id="pane-step-2">
+          <h2 class="step-title">Etapa 2 — Alocação de Capital e Custos</h2>
+          <p class="step-desc">Defina o montante inicial investido, aportes regulares e parâmetros de custos operacionais.</p>
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="sim-input-capital">Capital Inicial Investido</label>
+              <div class="input-with-prefix">
+                <span class="input-prefix" id="sim-currency-symbol">R$</span>
+                <input type="number" id="sim-input-capital" class="form-control" value="10000" min="100" step="100">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="sim-input-aporte">Aporte Periódico Opcional (por ciclo)</label>
+              <div class="input-with-prefix">
+                <span class="input-prefix">R$</span>
+                <input type="number" id="sim-input-aporte" class="form-control" value="0" min="0" step="50">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="sim-input-taxa">Taxa de Corretagem Estimada (%)</label>
+              <input type="number" id="sim-input-taxa" class="form-control" value="0.05" min="0" max="2" step="0.01">
+            </div>
+
+            <div class="form-group">
+              <label for="sim-input-slippage">Slippage / Derrapagem Média (%)</label>
+              <input type="number" id="sim-input-slippage" class="form-control" value="0.02" min="0" max="2" step="0.01">
+            </div>
+          </div>
+        </div>
+
+        <!-- ETAPA 3: HORIZONTE -->
+        <div class="wizard-step-pane" id="pane-step-3">
+          <h2 class="step-title">Etapa 3 — Horizonte de Previsão e Rebalanceamento</h2>
+          <p class="step-desc">Informe o horizonte temporal desejado. O sistema normaliza automaticamente para dias úteis de pregão ou mercado contínuo 24/7.</p>
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="sim-input-horizon-val">Valor do Horizonte</label>
+              <input type="number" id="sim-input-horizon-val" class="form-control" value="30" min="1" max="1825">
+            </div>
+
+            <div class="form-group">
+              <label for="sim-select-horizon-unit">Unidade de Tempo</label>
+              <select id="sim-select-horizon-unit" class="form-control">
+                <option value="dias" selected>Dias</option>
+                <option value="semanas">Semanas</option>
+                <option value="meses">Meses</option>
+                <option value="anos">Anos</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="info-callout" id="sim-horizon-preview">
+            <span class="info-icon">ℹ️</span>
+            <div>
+              <strong>Resumo do Horizonte:</strong>
+              <p id="sim-horizon-summary">30 dias corridos convertidos em ~21 pregões úteis de rebalanceamento.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- ETAPA 4: ALGORITMOS -->
+        <div class="wizard-step-pane" id="pane-step-4">
+          <h2 class="step-title">Etapa 4 — Algoritmos para Comparação Simultânea</h2>
+          <p class="step-desc">Selecione quais algoritmos serão avaliados simultaneamente sob exatamente as mesmas condições de mercado.</p>
+
+          <div class="algo-selection-grid">
+            <label class="algo-checkbox-card selected">
+              <input type="checkbox" name="sim_algorithms" value="mapp" checked>
+              <div class="algo-card-content">
+                <span class="algo-card-icon">🎯</span>
+                <div>
+                  <h4>M.A.P.P.</h4>
+                  <p>Regime + Estrutura + Padrões + Projeção</p>
+                </div>
+              </div>
+            </label>
+
+            <label class="algo-checkbox-card selected">
+              <input type="checkbox" name="sim_algorithms" value="ensemble" checked>
+              <div class="algo-card-content">
+                <span class="algo-card-icon">⚖️</span>
+                <div>
+                  <h4>Prediction Ensemble</h4>
+                  <p>Multimodelo com pesos por regime</p>
+                </div>
+              </div>
+            </label>
+
+            <label class="algo-checkbox-card selected">
+              <input type="checkbox" name="sim_algorithms" value="xgboost" checked>
+              <div class="algo-card-content">
+                <span class="algo-card-icon">⚡</span>
+                <div>
+                  <h4>XGBoost</h4>
+                  <p>Gradient Boosting multivariado</p>
+                </div>
+              </div>
+            </label>
+
+            <label class="algo-checkbox-card selected">
+              <input type="checkbox" name="sim_algorithms" value="random_forest" checked>
+              <div class="algo-card-content">
+                <span class="algo-card-icon">🌲</span>
+                <div>
+                  <h4>Random Forest</h4>
+                  <p>Ensemble de árvores de decisão</p>
+                </div>
+              </div>
+            </label>
+
+            <label class="algo-checkbox-card">
+              <input type="checkbox" name="sim_algorithms" value="lstm">
+              <div class="algo-card-content">
+                <span class="algo-card-icon">🧠</span>
+                <div>
+                  <h4>LSTM</h4>
+                  <p>Rede neural recorrente sequencial</p>
+                </div>
+              </div>
+            </label>
+
+            <label class="algo-checkbox-card">
+              <input type="checkbox" name="sim_algorithms" value="pattern_matching">
+              <div class="algo-card-content">
+                <span class="algo-card-icon">🔍</span>
+                <div>
+                  <h4>Pattern Matching</h4>
+                  <p>Similaridade com análogos históricos</p>
+                </div>
+              </div>
+            </label>
+
+            <label class="algo-checkbox-card">
+              <input type="checkbox" name="sim_algorithms" value="lightgbm">
+              <div class="algo-card-content">
+                <span class="algo-card-icon">🚀</span>
+                <div>
+                  <h4>LightGBM</h4>
+                  <p>Boosting baseado em histogramas</p>
+                </div>
+              </div>
+            </label>
+
+            <label class="algo-checkbox-card">
+              <input type="checkbox" name="sim_algorithms" value="regressao_linear">
+              <div class="algo-card-content">
+                <span class="algo-card-icon">📈</span>
+                <div>
+                  <h4>Regressão Linear (Ridge)</h4>
+                  <p>Solução analítica regularizada</p>
+                </div>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <!-- ETAPA 5: PARÂMETROS -->
+        <div class="wizard-step-pane" id="pane-step-5">
+          <h2 class="step-title">Etapa 5 — Ajuste Fino de Hiperparâmetros</h2>
+          <p class="step-desc">Configure os parâmetros específicos para os algoritmos selecionados ou mantenha as recomendações ótimas pré-configuradas.</p>
+
+          <div class="params-tabs-container" id="sim-params-tabs">
+            <!-- Renderizado dinamicamente via simulator.js -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Navegação do Wizard -->
+      <div class="wizard-footer">
+        <button type="button" class="btn-secondary hidden" id="wizard-btn-prev">Voltar</button>
+        <div class="wizard-footer-right">
+          <button type="button" class="btn-primary" id="wizard-btn-next">Próximo: Capital</button>
+          <button type="button" class="btn-accent hidden" id="wizard-btn-execute">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+            Executar Simulação de Investimentos
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Monitor de Progresso em Tempo Real (ProgressTracker) -->
+    <section class="card progress-card hidden" id="sim-progress-section">
+      <div class="progress-card-header">
+        <h3 class="section-title">Executando Algoritmos em Condições Idênticas</h3>
+        <span class="badge-status-running" id="sim-running-badge">Em Processamento...</span>
+      </div>
+
+      <!-- Barra de Progresso Geral -->
+      <div class="progress-bar-track">
+        <div class="progress-bar-fill" id="sim-progress-fill" style="width: 0%;"></div>
+      </div>
+
+      <!-- Métricas Reais do Cronômetro -->
+      <div class="tracker-metrics-grid">
+        <div class="tracker-box">
+          <span class="tracker-label">Progresso Atual</span>
+          <span class="tracker-value" id="sim-prog-pct">0.0%</span>
+        </div>
+        <div class="tracker-box">
+          <span class="tracker-label">Tempo Decorrido</span>
+          <span class="tracker-value" id="sim-elapsed-time">00:00:00</span>
+        </div>
+        <div class="tracker-box">
+          <span class="tracker-label">Tempo Restante (Est.)</span>
+          <span class="tracker-value" id="sim-remaining-time">Calculando...</span>
+        </div>
+        <div class="tracker-box">
+          <span class="tracker-label">Tempo Total Estimado</span>
+          <span class="tracker-value" id="sim-total-time">Calculando...</span>
+        </div>
+      </div>
+
+      <p class="progress-status-msg" id="sim-status-text">Inicializando simulação de carteira...</p>
+    </section>
+
+    <!-- Resultados e Relatório da Simulação -->
+    <section class="simulator-results-section hidden" id="sim-results-section">
+
+      <!-- Cards de Destaques -->
+      <div class="highlights-grid">
+        <div class="highlight-card best-overall">
+          <span class="hl-badge">🏆 Melhor Geral</span>
+          <h3 id="hl-best-overall">—</h3>
+          <p>Equilíbrio ótimo entre retorno, Sharpe e controle de risco</p>
+        </div>
+        <div class="highlight-card best-return">
+          <span class="hl-badge">📈 Maior Retorno</span>
+          <h3 id="hl-best-return">—</h3>
+          <p>Maior ganho de capital acumulado</p>
+        </div>
+        <div class="highlight-card best-sharpe">
+          <span class="hl-badge">⚖️ Maior Sharpe</span>
+          <h3 id="hl-best-sharpe">—</h3>
+          <p>Maior retorno ajustado ao risco financeiro</p>
+        </div>
+        <div class="highlight-card lowest-dd">
+          <span class="hl-badge">🛡️ Menor Drawdown</span>
+          <h3 id="hl-lowest-dd">—</h3>
+          <p>Menor recuo histórico e maior proteção patrimonial</p>
+        </div>
+      </div>
+
+      <!-- Gráfico Comparativo de Curvas de Capital -->
+      <div class="card chart-card">
+        <div class="chart-header">
+          <div>
+            <h3 class="card-title">Evolução do Capital Acumulado (Comparativo Multi-Algoritmo)</h3>
+            <p class="card-subtitle">Evolução patrimonial iniciando com <span id="label-capital-ini">R$ 10.000,00</span> sob taxas e slippage reais</p>
+          </div>
+        </div>
+        <div class="chart-canvas-wrapper" style="height: 400px;">
+          <canvas id="chart-equity-comparison"></canvas>
+        </div>
+      </div>
+
+      <!-- Gráficos de Drawdown e Risco x Retorno -->
+      <div class="charts-dual-grid">
+        <div class="card chart-card">
+          <h3 class="card-title">Curvas de Drawdown (%)</h3>
+          <p class="card-subtitle">Intensidade e profundidade das quedas históricas de cada modelo</p>
+          <div class="chart-canvas-wrapper" style="height: 280px;">
+            <canvas id="chart-drawdown-comparison"></canvas>
+          </div>
+        </div>
+
+        <div class="card chart-card">
+          <h3 class="card-title">Relação Risco × Retorno (Sharpe vs Drawdown)</h3>
+          <p class="card-subtitle">Eficiência relativa de cada algoritmo no espaço de busca</p>
+          <div class="chart-canvas-wrapper" style="height: 280px;">
+            <canvas id="chart-risk-return-scatter"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabela Completa e Ranqueamento Multicritério -->
+      <div class="card table-card">
+        <div class="table-header-flex">
+          <div>
+            <h3 class="card-title">Relatório Comparativo e Ranqueamento Multicritério</h3>
+            <p class="card-subtitle">Classificação ponderada por estabilidade, métricas de estratégia e erro estatístico</p>
+          </div>
+          <button type="button" class="btn-secondary" id="btn-new-simulation">
+            Nova Simulação
+          </button>
+        </div>
+
+        <div class="table-responsive">
+          <table class="data-table" id="sim-comparison-table">
+            <thead>
+              <tr>
+                <th>Rank</th>
+                <th>Algoritmo</th>
+                <th>Capital Final</th>
+                <th>Lucro Líquido</th>
+                <th>Retorno (%)</th>
+                <th>Sharpe</th>
+                <th>Sortino</th>
+                <th>Max DD (%)</th>
+                <th>Win Rate (%)</th>
+                <th>Profit Factor</th>
+                <th>RMSE</th>
+                <th>Score</th>
+              </tr>
+            </thead>
+            <tbody id="sim-table-body">
+              <!-- Preenchido dinamicamente via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Aviso Legal de Riscos -->
+      <div class="disclaimer-callout">
+        <p><strong>Aviso de Conformidade Financeira:</strong> As simulações e previsões são estimativas estatísticas de caráter acadêmico/experimental e não constituem garantia de rentabilidade ou recomendação formal de investimento. O desempenho passado verificado no backtesting não garante rentabilidade futura. Investimentos em ativos de renda variável envolvem risco substancial de perda de capital.</p>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- Toast de Notificações -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <script src="/static/js/simulator.js"></script>
+</body>
+</html>

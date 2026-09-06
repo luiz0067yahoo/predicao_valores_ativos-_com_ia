@@ -36,6 +36,10 @@
         <span class="pulse-dot"></span>
         <span id="connection-text">Pronto para Otimização</span>
       </div>
+      <a href="/portfolio-simulator" class="btn btn-primary" style="text-decoration: none;" title="Abrir Simulador de Investimentos Multi-Algoritmo M.A.P.P.">
+        <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        <span>Simulador MAPP</span>
+      </a>
       <button id="btn-view-history" class="btn btn-glass" title="Ver Histórico de Ensaios">
         <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
         <span>Histórico</span>
@@ -63,6 +67,9 @@
           <label for="select-algorithm">1. Algoritmo de Inteligência Artificial</label>
           <div class="select-wrapper">
             <select id="select-algorithm" class="form-control">
+              <option value="mapp" selected>🛡️ M.A.P.P. Quantitativo (⭐⭐⭐⭐⭐)</option>
+              <option value="ensemble">🤝 Ensemble Multi-Regime (⭐⭐⭐⭐⭐)</option>
+              <option value="pattern_matching">🔍 Pattern Matching Análogos (⭐⭐⭐⭐)</option>
               <option value="xgboost">⚡ XGBoost (⭐⭐⭐⭐⭐)</option>
               <option value="lightgbm">🚀 LightGBM (⭐⭐⭐⭐⭐)</option>
               <option value="random_forest">🌲 Random Forest (⭐⭐⭐⭐)</option>

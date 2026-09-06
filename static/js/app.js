@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
     periodsConfig: {},
     defaultGa: {},
     algorithmsCatalog: [],
-    selectedAlgorithm: 'xgboost',
+    selectedAlgorithm: 'mapp',
     currentCurrency: 'USD',
     forecastChart: null,
     convergenceChart: null,
@@ -145,7 +145,7 @@ document.addEventListener('DOMContentLoaded', () => {
       elements.selectAlgorithm.appendChild(opt);
     });
 
-    elements.selectAlgorithm.value = 'xgboost';
+    elements.selectAlgorithm.value = 'mapp';
     onAlgorithmChange();
   }
 
@@ -207,17 +207,31 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const fields = [];
 
-    // Adiciona campo padrão de Horizonte de Projeção em Dias para todos
+    // Adiciona campo padrão de Horizonte de Projeção com suporte a Unidades
     fields.push({
       id: 'param-horizon',
-      name: 'horizonte_projecao',
-      label: 'Projeção (Dias)',
+      name: 'horizon_value',
+      label: 'Horizonte de Projeção',
       type: 'number',
       val: 5,
       min: 1,
-      max: 30,
+      max: 365,
       step: 1,
-      hint: 'Horizonte futuro'
+      hint: 'Valor do horizonte futuro'
+    });
+    fields.push({
+      id: 'param-horizon-unit',
+      name: 'horizon_unit',
+      label: 'Unidade do Horizonte',
+      type: 'select',
+      val: 'dias',
+      options: [
+        { value: 'dias', text: 'Dias' },
+        { value: 'semanas', text: 'Semanas' },
+        { value: 'meses', text: 'Meses' },
+        { value: 'anos', text: 'Anos' }
+      ],
+      hint: 'Escala temporal calibrada'
     });
 
     if (algoId === 'xgboost' || algoId === 'lightgbm') {
@@ -519,17 +533,100 @@ document.addEventListener('DOMContentLoaded', () => {
         step: 0.1,
         hint: 'Penalidade TSK'
       });
+    } else if (algoId === 'mapp') {
+      fields.push({
+        id: 'param-mapp-features',
+        name: 'n_features',
+        label: 'Qtd. Características',
+        type: 'number',
+        val: defaultParams.n_features || 15,
+        min: 5,
+        max: 40,
+        step: 1,
+        hint: 'Features selecionadas (anti-leak)'
+      });
+      fields.push({
+        id: 'param-mapp-conf',
+        name: 'confidence_level',
+        label: 'Confiança (%)',
+        type: 'number',
+        val: Math.round((defaultParams.confidence_level || 0.95) * 100),
+        min: 80,
+        max: 99,
+        step: 1,
+        hint: 'Intervalo de incerteza'
+      });
+    } else if (algoId === 'ensemble') {
+      fields.push({
+        id: 'param-ens-mode',
+        name: 'mode',
+        label: 'Modo de Ponderação',
+        type: 'select',
+        val: defaultParams.mode || 'regime_adaptive',
+        options: [
+          { value: 'regime_adaptive', text: 'Adaptativo por Regime' },
+          { value: 'equal', text: 'Equiponderado (Média Simples)' }
+        ],
+        hint: 'Ponderação dos modelos'
+      });
+      fields.push({
+        id: 'param-ens-k',
+        name: 'top_models',
+        label: 'Top Modelos',
+        type: 'number',
+        val: defaultParams.top_models || 3,
+        min: 2,
+        max: 8,
+        step: 1,
+        hint: 'Qtd. modelos no ensemble'
+      });
+    } else if (algoId === 'pattern_matching') {
+      fields.push({
+        id: 'param-pm-window',
+        name: 'window_size',
+        label: 'Janela do Padrão',
+        type: 'number',
+        val: defaultParams.window_size || 20,
+        min: 5,
+        max: 60,
+        step: 5,
+        hint: 'Barras do padrão atual'
+      });
+      fields.push({
+        id: 'param-pm-matches',
+        name: 'top_k_matches',
+        label: 'Análogos Históricos',
+        type: 'number',
+        val: defaultParams.top_k_matches || 5,
+        min: 2,
+        max: 20,
+        step: 1,
+        hint: 'Top padrões similares'
+      });
     }
 
     fields.forEach(f => {
       const group = document.createElement('div');
       group.className = 'form-group';
-      group.innerHTML = `
-        <label for="${f.id}">${f.label}</label>
-        <input type="${f.type}" id="${f.id}" name="${f.name}" class="form-control dynamic-param"
-               value="${f.val}" min="${f.min || ''}" max="${f.max || ''}" step="${f.step || '1'}">
-        <span class="field-hint">${f.hint}</span>
-      `;
+      if (f.type === 'select') {
+        const optionsHtml = (f.options || []).map(opt => 
+          `<option value="${opt.value}" ${opt.value === f.val ? 'selected' : ''}>${opt.text}</option>`
+        ).join('');
+        group.innerHTML = `
+          <label for="${f.id}">${f.label}</label>
+          <select id="${f.id}" name="${f.name}" class="form-control dynamic-param">
+            ${optionsHtml}
+          </select>
+          <span class="field-hint">${f.hint}</span>
+        `;
+      } else {
+        group.innerHTML = `
+          <label for="${f.id}">${f.label}</label>
+          <input type="${f.type}" id="${f.id}" name="${f.name}" class="form-control dynamic-param"
+                 value="${f.val}" min="${f.min || ''}" max="${f.max || ''}" step="${f.step || '1'}">
+          <span class="field-hint">${f.hint}</span>
+        `;
+      }
       elements.dynamicParamsContainer.appendChild(group);
     });
   }

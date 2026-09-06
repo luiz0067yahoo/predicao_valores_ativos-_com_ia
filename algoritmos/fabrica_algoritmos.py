@@ -20,6 +20,9 @@ from algoritmos.algoritmo_genetico.modelo_algoritmo_genetico import ModeloAlgori
 from algoritmos.mirofish.simulador_mirofish import SimuladorMiroFish
 from algoritmos.rede_neural.modelo_rede_neural import ModeloRedeNeural
 from algoritmos.logica_fuzzy.modelo_logica_fuzzy import ModeloLogicaFuzzy
+from algoritmos.mapp.modelo_mapp import ModeloMAPP
+from algoritmos.ensemble.modelo_ensemble import ModeloEnsemble
+from algoritmos.pattern_matching.modelo_pattern_matching import ModeloPatternMatching
 
 
 # Catálogo com todos os algoritmos suportados, seus metadados e parâmetros padrão
@@ -202,6 +205,44 @@ CATALOGO_ALGORITMOS: Dict[str, Dict[str, Any]] = {
             "largura_pertinencia": 1.0,
             "forca_regularizacao": 0.5
         }
+    },
+    "mapp": {
+        "identificador": "mapp",
+        "nome": "M.A.P.P. (Market Analysis Pattern Prediction)",
+        "classe": ModeloMAPP,
+        "desempenho": "⭐⭐⭐⭐⭐",
+        "uso": "Arquitetura quantitativa completa: Regime + Estrutura + Padrões + Projeção Calibrada",
+        "icone": "🎯",
+        "categoria": "Sistema Híbrido Quantitativo",
+        "parametros_padrao": {
+            "max_features": 20,
+            "peso_regime": 0.30,
+            "peso_padroes": 0.30
+        }
+    },
+    "ensemble": {
+        "identificador": "ensemble",
+        "nome": "Prediction Ensemble (Multimodelo)",
+        "classe": ModeloEnsemble,
+        "desempenho": "⭐⭐⭐⭐⭐",
+        "uso": "Combinação linear ponderada adaptativa com pesos dependentes do regime de mercado",
+        "icone": "⚖️",
+        "categoria": "Ensemble Learning",
+        "parametros_padrao": {
+            "tipo_pesagem": "regime"
+        }
+    },
+    "pattern_matching": {
+        "identificador": "pattern_matching",
+        "nome": "Pattern Matching (Análogos Históricos)",
+        "classe": ModeloPatternMatching,
+        "desempenho": "⭐⭐⭐⭐",
+        "uso": "Reconhecimento de janelas passadas similares e projeção empírica multivariada",
+        "icone": "🔍",
+        "categoria": "Reconhecimento de Padrões",
+        "parametros_padrao": {
+            "k_vizinhos": 5
+        }
     }
 }
 
@@ -228,6 +269,9 @@ class FabricaAlgoritmos:
                 "parametros_padrao": info["parametros_padrao"]
             })
         return lista
+
+    # Alias
+    listar_algoritmos_disponiveis = listar_algoritmos
 
     @staticmethod
     def obter_instancia(identificador: str, janela_temporal: int = 10) -> BaseAlgoritmo:

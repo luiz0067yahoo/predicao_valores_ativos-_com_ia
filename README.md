@@ -1,109 +1,112 @@
-# AI Asset Predictor: Previsão de Ativos Financeiros e Commodities com Algoritmo Genético e Yahoo Finance
+# M.A.P.P. — Market Analysis Pattern Prediction & AI Asset Predictor
 
-Sistema em Python com Interface Gráfica Interativa (GUI) que integra inteligência artificial evolutiva (**Algoritmo Genético**) e modelos de séries temporais para modelagem, otimização de pesos e projeção de cotações futuras de ativos financeiros, moedas e commodities agrícolas/pecuárias em tempo real via API do Yahoo Finance (`yfinance`).
-
----
-
-## 🎯 Ativos Pré-configurados e Suportados
-
-| Categoria | Ativo | Ticker Yahoo Finance | Descrição |
-| :--- | :--- | :--- | :--- |
-| **Câmbio** | Dólar Americano | `USDBRL=X` | Cotação USD/BRL em Reais |
-| **Câmbio** | Euro | `EURBRL=X` | Cotação EUR/BRL em Reais |
-| **Criptomoedas** | Bitcoin (USD) | `BTC-USD` | Cotação do BTC em Dólares |
-| **Criptomoedas** | Bitcoin (BRL) | `BTC-BRL` | Cotação do BTC em Reais |
-| **Índices** | Ibovespa | `^BVSP` | Índice de Ações da B3 (Brasil) |
-| **Commodities** | Soja | `ZS=F` | Contratos Futuros de Soja (CBOT) |
-| **Commodities** | Milho | `ZC=F` | Contratos Futuros de Milho (CBOT) |
-| **Commodities** | Café Arábica | `KC=F` | Contratos Futuros de Café (ICE) |
-| **Pecuária** | Boi Gordo | `LE=F` | Live Cattle Futures (CME) |
-| **Pecuária** | Gado de Engorda | `GF=F` | Feeder Cattle Futures |
-| **Personalizado** | Custom Ticker | *Livre escolha* | Suporta qualquer ação, índice ou ETF global (ex: `PETR4.SA`, `VALE3.SA`, `AAPL`, `SPY`) |
+Plataforma quantitativa de nível institucional para análise técnica automatizada, detecção de regimes de mercado, previsão probabilística de séries temporais com Inteligência Artificial e simulação comparativa de carteiras.
 
 ---
 
-## 🧠 Arquitetura do Algoritmo Genético
+## 🌟 Principais Recursos da Plataforma
 
-O motor evolutivo foi projetado especificamente para séries temporais financeiras:
-
-- **Representação Cromossômica:** Vetor contínuo de genes em ponto flutuante que pondera defasagens temporais autorregressivas (*lags* de lookback $t-1, \dots, t-k$), indicadores de momentum e osciladores técnicos (*RSI*, *MACD*, *Volatilidade*, *Médias Móveis* e *Bandas de Bollinger*) com termo de viés (*bias*).
-- **Função de Aptidão (Fitness):** Minimiza o erro quadrático e absoluto ponderado ($\text{RMSE}$ e $\text{MAE}$), penaliza dispersões extremas através de regularização L2 implícita e bonifica assertividade no sentido direcional da variação de preços:
-  $$\text{Fitness} = \frac{1000}{1.0 + 10 \cdot \text{RMSE} + 5 \cdot \text{MAE}} \times (1.0 + 0.4 \cdot \text{Acurácia Direcional}) - 0.01 \sum w_i^2$$
-- **Seleção:** Seleção por Torneio estocástico configurável ($k=4$).
-- **Recombinação (Crossover):** Cruzamento aritmético ponderado combinado com dispersão espacial exploratória (BLX-$\alpha$).
-- **Mutação:** Mutação gaussiana com perturbação adaptativa decrescente ao longo das gerações $\sigma(g) = \sigma_0 \cdot (1 - g/G)$ com taxa de reset estocástica para evasão de mínimos locais.
-- **Elitismo:** Preservação estrita dos melhores indivíduos no topo de cada geração.
-
----
-
-## 📊 Relatórios Executivos em DOCX e Planilhamento
-
-1. **Planilhamento Automático de Ensaios (`output/logs/historico_ensaios.csv`):**
-   - Registra cada experimento com timestamp, ativo, hiperparâmetros do GA, métricas estatísticas ($\text{RMSE}$, $\text{MAE}$, $\text{MAPE}$, $R^2$, Acurácia Direcional) e preços futuros.
-2. **Relatório Executivo em Word (`.docx`):**
-   - Geração com layout corporativo profissional.
-   - Tabelas estilizadas com formatação de cores e bordas elegantes.
-   - Gráficos analíticos de alta resolução (300 DPI) embutidos diretamente no documento:
-     - Gráfico da Série Histórica, Ajuste do GA e Projeção Futura com intervalo de confiança empírico (95%).
-     - Gráfico da Curva de Aprendizado e Convergência Evolutiva (Fitness Máximo vs. Médio).
+- **16 Algoritmos Preditivos**: De modelos quantitativos proprietários a Redes Neurais Profundas (MLP, LSTM, GRU, Transformers), Gradient Boosting (XGBoost, LightGBM), Meta-Heurísticas (Algoritmos Genéticos), Modelos Estocásticos (ARIMA, SARIMA, Prophet) e Simulação Multiagente (MiroFish).
+- **M.A.P.P. Proprietary Engine**: Modelo de 4 pilares (Regime de Mercado, Estrutura e Acumulação, Padrões Técnicos, Momento & Divergências) com estimativa probabilística de direção, magnitude esperada e intervalo de confiança a 95%.
+- **Classificador de 8 Regimes de Mercado**: Detecção dinâmica de `BULL_TREND`, `BEAR_TREND`, `SIDEWAYS`, `HIGH_VOLATILITY`, `LOW_VOLATILITY`, `BREAKOUT`, `CRASH` e `RECOVERY`.
+- **Pipeline de Características Anti-Vazamento (Anti-Data-Leakage)**: Mais de 70 indicadores calculados estritamente com defasagens causais sem olhar para o futuro (`ValidadorAntiVazamento` e `SeletorCaracteristicas`).
+- **Simulador de Investimentos Multi-Algoritmo (`/portfolio-simulator`)**: Wizard interativo em 5 etapas para comparação simultânea de múltiplos modelos, curvas de patrimônio (Equity Curve), Drawdown dinâmico, dispersão Risco x Retorno e ranqueamento multicritério ponderado.
+- **Temporização Real e Transparente (`ProgressTracker`)**: Cálculo exato de tempo decorrido, tempo restante estimado e tempo total estimado no formato `HH:MM:SS` baseado no consumo real de ciclos (`time.perf_counter()`), sem animações estáticas ou contadores fictícios.
+- **Normalização de Horizontes Flexíveis (`ForecastHorizon`)**: Suporte a dias, semanas, meses e anos com distinção rigorosa entre calendário de dias úteis da B3/bolsas tradicionais e mercado ininterrupto (24/7) de criptoativos.
+- **Armazenamento e Cache Histórico em Excel (`db/`)**: Armazenamento automático e reutilização inteligente de bases históricas em arquivos `.xls` (ex: `db/bitcoin.xls`).
+- **Relatórios Executivos com Nomenclatura Padronizada**: Emissão instantânea de relatórios completos em formatos PDF e Word (`.docx`) nomeados estritamente como `<ativo> <data_inicio> a <data_fim>.<ext>`.
 
 ---
 
-## 🚀 Instalação e Execução
+## 🏗️ Arquitetura do Sistema
+
+```mermaid
+graph TD
+    A[Yahoo Finance API / DB Cache .xls] --> B[DataFetcher & NormalizadorHorizonte]
+    B --> C[mapp.features: 70+ Features Técnicas]
+    C --> D[MarketRegimeDetector: 8 Regimes]
+    C --> E[SeletorCaracteristicas: Filtro Anti-Leakage]
+    D & E --> F[Catálogo de 16 Algoritmos Predtivos]
+    F --> G[BacktestEngine: Walk-Forward Validation]
+    G --> H[CalculadorMetricas: Sharpe, Sortino, MaxDD, WinRate]
+    H --> I[Web Dashboard Flask & Interactive Charts]
+    H --> J[Simulador de Investimentos /portfolio-simulator]
+    H --> K[Exportador Executivo PDF / Word DOCX]
+```
+
+---
+
+## 🤖 Catálogo dos 16 Algoritmos Integrados
+
+| Algoritmo | Identificador | Categoria | Desempenho Típico | Documentação |
+| :--- | :--- | :--- | :--- | :--- |
+| **M.A.P.P.** | `mapp` | Quantitativo Multi-Pilar | ⭐⭐⭐⭐⭐ | [docs/algorithms/MAPP.md](docs/algorithms/MAPP.md) |
+| **Ensemble** | `ensemble` | Ponderação Adaptativa por Regime | ⭐⭐⭐⭐⭐ | [docs/algorithms/ENSEMBLE.md](docs/algorithms/ENSEMBLE.md) |
+| **Pattern Matching** | `pattern_matching` | Análogos Históricos / KNN | ⭐⭐⭐⭐ | [docs/algorithms/PATTERN_MATCHING.md](docs/algorithms/PATTERN_MATCHING.md) |
+| **XGBoost** | `xgboost` | Gradient Tree Boosting | ⭐⭐⭐⭐⭐ | [docs/algorithms/README.md](docs/algorithms/README.md) |
+| **LightGBM** | `lightgbm` | Fast Gradient Boosting | ⭐⭐⭐⭐⭐ | [docs/algorithms/README.md](docs/algorithms/README.md) |
+| **Random Forest** | `random_forest` | Bagging Ensemble | ⭐⭐⭐⭐ | [docs/algorithms/README.md](docs/algorithms/README.md) |
+| **LSTM** | `lstm` | Deep Learning Recorrente | ⭐⭐⭐⭐ | [docs/algorithms/README.md](docs/algorithms/README.md) |
+| **GRU** | `gru` | Gated Recurrent Unit | ⭐⭐⭐⭐ | [docs/algorithms/README.md](docs/algorithms/README.md) |
+| **Transformer** | `transformer` | Mecanismo de Auto-Atenção | ⭐⭐⭐⭐⭐ | [docs/algorithms/README.md](docs/algorithms/README.md) |
+| **ARIMA / SARIMA** | `arima_sarima` | Séries Temporais Clássicas | ⭐⭐⭐ | [docs/algorithms/README.md](docs/algorithms/README.md) |
+| **Prophet** | `prophet` | Decomposição Sazonal | ⭐⭐ | [docs/algorithms/README.md](docs/algorithms/README.md) |
+| **Regressão Linear** | `regressao_linear` | Regularização L2 Ridge | ⭐⭐ | [docs/algorithms/README.md](docs/algorithms/README.md) |
+| **Algoritmo Genético** | `algoritmo_genetico` | Computação Evolutiva | ⭐⭐⭐⭐ | [docs/algorithms/README.md](docs/algorithms/README.md) |
+| **Rede Neural MLP** | `rede_neural` | Perceptron Multicamadas | ⭐⭐⭐⭐⭐ | [docs/algorithms/README.md](docs/algorithms/README.md) |
+| **Lógica Fuzzy** | `logica_fuzzy` | Inferência Neuro-Fuzzy TSK | ⭐⭐⭐⭐ | [docs/algorithms/README.md](docs/algorithms/README.md) |
+| **MiroFish** | `mirofish` | Simulação Multiagente | ⭐⭐⭐⭐⭐ | [docs/algorithms/README.md](docs/algorithms/README.md) |
+
+---
+
+## 📚 Documentação Técnica Completa
+
+Explore a documentação modular detalhada nas pastas dedicadas:
+
+- **[docs/algorithms/](docs/algorithms/)**: Formulação matemática, parâmetros e fundamentos teóricos de cada algoritmo.
+  - [M.A.P.P. Engine](docs/algorithms/MAPP.md)
+  - [Ensemble Multi-Regime](docs/algorithms/ENSEMBLE.md)
+  - [Pattern Matching](docs/algorithms/PATTERN_MATCHING.md)
+  - [Catálogo Completo](docs/algorithms/README.md)
+- **[docs/features/](docs/features/)**: Especificação dos mais de 70 indicadores quantitativos e garantias contra vazamento de dados.
+  - [Classificador de Regimes de Mercado](docs/features/MARKET_REGIME.md)
+  - [Pipeline de Características](docs/features/README.md)
+- **[docs/backtesting/](docs/backtesting/)**: Metodologia walk-forward, modelagem de custos (slippage, taxas) e métricas de performance.
+  - [Motor de Backtesting](docs/backtesting/BACKTESTING.md)
+- **[docs/simulation/](docs/simulation/)**: Manual de uso do Simulador de Investimentos, sistema de ranking multicritério e otimizador de hiperparâmetros.
+  - [Guia do Simulador](docs/simulation/INVESTMENT_SIMULATOR.md)
+
+---
+
+## ⚡ Instalação e Execução
 
 ### 1. Pré-requisitos
-Certifique-se de possuir o Python 3.10+ instalado em seu sistema.
+- Python 3.10 ou superior.
 
 ### 2. Instalação das Dependências
-Clone ou acesse o repositório e instale as bibliotecas necessárias:
 ```bash
 pip install -r requirements.txt
 ```
 
-### 3. Executando a Interface Web (Recomendado)
-Para iniciar a interface web moderna no navegador com gráficos interativos e streaming em tempo real:
+### 3. Inicialização da Plataforma Web
 ```bash
-# Opção A: Execução direta do ponto de entrada (abre o navegador automaticamente)
+# Inicia o servidor Flask na porta 5000 e abre automaticamente no navegador
 python main.py
 
-# Opção B: Execução direta do servidor Flask
+# Ou execute diretamente o backend web:
 python web_app.py
 ```
-Acesse no seu navegador: **http://127.0.0.1:5000**
+- **Painel Preditivo Principal**: [http://127.0.0.1:5000](http://127.0.0.1:5000)
+- **Simulador de Investimentos M.A.P.P.**: [http://127.0.0.1:5000/portfolio-simulator](http://127.0.0.1:5000/portfolio-simulator)
 
-### 4. Executando a Interface Gráfica Desktop (Tkinter)
-Caso prefira a janela nativa desktop em Tkinter:
+### 4. Execução da Suíte de Testes Automatizados
 ```bash
-python main.py --gui
-```
-
-### 5. Executando os Testes Automatizados
-Para rodar a suíte completa de testes unitários e de integração:
-```bash
-python -m pytest -v
+pytest tests/ -v
 ```
 
 ---
 
-## 📂 Estrutura Modular do Projeto
+## ⚖️ Aviso Legal e Regulatório (Disclaimer)
 
-```
-predicao_valores_ativos-_com_ia/
-├── config.py                 # Mapeamento de tickers, hiperparâmetros padrão e diretórios
-├── data_fetcher.py           # Conexão com Yahoo Finance, cache e indicadores técnicos
-├── genetic_engine.py         # Motor do Algoritmo Genético (Cromossomos, Seleção, Crossover, Mutação)
-├── model_predictor.py        # Reconstrução de escalas, métricas (RMSE, MAE, MAPE, R²) e projeção recursiva
-├── report_generator.py       # Planilhamento de ensaios e emissão do relatório executivo em Word (.docx)
-├── gui.py                    # Interface Gráfica moderna com Tkinter e Matplotlib embutido
-├── main.py                   # Ponto de entrada da aplicação
-├── requirements.txt          # Dependências do projeto
-├── output/
-│   ├── reports/              # Relatórios DOCX e gráficos gerados
-│   └── logs/                 # Planilha CSV de histórico de ensaios
-└── tests/                    # Suíte de testes unitários e de integração
-    ├── test_data_fetcher.py
-    ├── test_genetic_engine.py
-    ├── test_model_predictor.py
-    ├── test_report_generator.py
-    └── test_integration.py
-```
+> [!WARNING]
+> Esta plataforma foi desenvolvida estritamente para fins educacionais, acadêmicos e de pesquisa quantitativa. Rentabilidade passada não representa garantia de rentabilidade futura. Modelos preditivos de séries temporais e Inteligência Artificial estão sujeitos a incertezas inerentes à dinâmica estocástica dos mercados. O sistema não constitui recomendação de compra ou venda de quaisquer ativos ou valores mobiliários nos termos da Instrução CVM nº 20/2021 ou padrões internacionais equivalentes. Os autores não se responsabilizam por decisões financeiras ou operacionais tomadas com base nas informações emitidas pela ferramenta.

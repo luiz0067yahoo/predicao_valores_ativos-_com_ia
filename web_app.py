@@ -36,6 +36,9 @@ from model_predictor import ModelPredictor as _OriginalModelPredictor
 GeneticEngine = _OriginalGeneticEngine
 ModelPredictor = _OriginalModelPredictor
 from algoritmos.fabrica_algoritmos import FabricaAlgoritmos, CATALOGO_ALGORITMOS
+from mapp.horizon import ForecastHorizon, NormalizadorHorizonte
+from mapp.tracker import ProgressTracker
+from mapp.simulator import InvestmentSimulator, HyperparameterOptimizer
 
 logging.basicConfig(
     level=logging.INFO,
@@ -50,6 +53,10 @@ CORS(app, supports_credentials=True)
 # Registro em memória de tarefas ativas para monitoramento por Sessão / AJAX
 TAREFAS_PROGRESSO: Dict[str, Dict[str, Any]] = {}
 TRAVA_TAREFAS = threading.Lock()
+
+# Registro de simulações ativas do simulador de investimentos
+SIMULACOES_PROGRESSO: Dict[str, Dict[str, Any]] = {}
+TRAVA_SIMULACOES = threading.Lock()
 
 # Armazenamento em memória do último resultado executado para exportação instantânea
 ULTIMO_RESULTADO: Dict[str, Any] = {
@@ -122,7 +129,17 @@ def _extrair_parametros_requisicao(dados: Dict[str, Any]) -> Dict[str, Any]:
     if identificador_algoritmo not in CATALOGO_ALGORITMOS:
         identificador_algoritmo = "algoritmo_genetico"
 
-    horizonte = int(dados.get("forecast_horizon", dados.get("horizonte_projecao", 5)))
+    eh_cripto = ("BTC" in ticker) or ("ETH" in ticker) or ("-USD" in ticker and "USDBRL" not in ticker)
+    val_horiz = dados.get("horizon_value", dados.get("horizonte_valor"))
+    unit_horiz = dados.get("horizon_unit", dados.get("horizonte_unidade", "dias"))
+    if val_horiz is not None:
+        try:
+            h_obj = NormalizadorHorizonte.normalizar(int(val_horiz), str(unit_horiz), eh_criptomoeda=eh_cripto)
+            horizonte = h_obj.periodos_normalizados
+        except Exception:
+            horizonte = int(dados.get("forecast_horizon", dados.get("horizonte_projecao", 5)))
+    else:
+        horizonte = int(dados.get("forecast_horizon", dados.get("horizonte_projecao", 5)))
 
     # Extrai hiperparâmetros específicos
     hiperparametros: Dict[str, Any] = {}
@@ -135,6 +152,7 @@ def _extrair_parametros_requisicao(dados: Dict[str, Any]) -> Dict[str, Any]:
             "flexibilidade_sazonal", "forca_regularizacao", "tamanho_populacao",
             "numero_geracoes", "taxa_mutacao", "taxa_crossover", "numero_rodadas_debate",
             "numero_conjuntos_fuzzy", "largura_pertinencia",
+            "max_features", "peso_regime", "peso_padroes", "tipo_pesagem", "k_vizinhos",
             "population_size", "generations", "mutation_rate"
         ]:
             hiperparametros[chave] = valor
@@ -728,6 +746,191 @@ def baixar_arquivo_relatorio(filename: str):
         download_name=filename,
         mimetype=mimetype
     )
+
+
+# =========================================================================
+# NOVA PÁGINA E APIS: SIMULADOR DE INVESTIMENTO M.A.P.P.
+# =========================================================================
+
+@app.route("/portfolio-simulator")
+def pagina_simulador_investimento():
+    """Renderiza a página corporativa do Simulador de Investimentos."""
+    return render_template("simulator.html")
+
+
+@app.route("/api/simulator/run", methods=["POST"])
+def iniciar_simulacao_carteira():
+    """
+    Inicia simulação comparativa multi-algoritmo em thread de fundo
+    e acompanha o tempo real via ProgressTracker.
+    """
+    try:
+        dados = request.get_json() or {}
+        ativo = dados.get("asset", dados.get("ativo", "Petrobras (PETR4.SA)"))
+        custom_ticker = dados.get("custom_ticker", "").strip().upper()
+
+        if "Personalizado" in ativo or ativo == "custom":
+            ticker = custom_ticker or "PETR4.SA"
+            nome_ativo = f"Custom ({ticker})"
+            moeda = "BRL"
+        elif ativo in ASSETS:
+            ticker = ASSETS[ativo]["ticker"]
+            nome_ativo = ativo
+            moeda = ASSETS[ativo].get("currency", "BRL")
+        else:
+            ticker = custom_ticker or "PETR4.SA"
+            nome_ativo = ativo
+            moeda = "BRL"
+
+        capital = float(dados.get("capital", dados.get("capital_inicial", 10000.0)))
+        aporte = float(dados.get("aporte_periodico", 0.0))
+        periodo = dados.get("period", dados.get("periodo", "1y"))
+
+        # Normaliza horizonte
+        h_val = int(dados.get("horizon_value", dados.get("horizonte_valor", 30)))
+        h_unit = str(dados.get("horizon_unit", dados.get("horizonte_unidade", "dias")))
+        eh_cripto = ("BTC" in ticker) or ("ETH" in ticker) or ("-USD" in ticker and "USDBRL" not in ticker)
+
+        horizonte_obj = NormalizadorHorizonte.normalizar(
+            valor=h_val,
+            unidade=h_unit,
+            eh_criptomoeda=eh_cripto
+        )
+
+        algoritmos_escolhidos = dados.get("algorithms", dados.get("algoritmos", ["mapp", "xgboost", "random_forest"]))
+        params_algos = dados.get("algorithm_params", {})
+
+        id_simulacao = str(uuid.uuid4())
+        session["id_simulacao_atual"] = id_simulacao
+
+        with TRAVA_SIMULACOES:
+            SIMULACOES_PROGRESSO[id_simulacao] = {
+                "progresso": 0.0,
+                "tempo_decorrido": "00:00:00",
+                "tempo_restante": "Calculando...",
+                "tempo_estimado_total": "Calculando...",
+                "algoritmo_atual": "",
+                "status_message": "Carregando série histórica de dados...",
+                "concluido": False,
+                "resultado": None,
+                "erro": None
+            }
+
+        def trabalhador_simulacao():
+            try:
+                coletor = DataFetcher()
+                str_p = PERIOD_CHOICES.get(periodo, periodo if periodo in ["1mo", "3mo", "6mo", "1y", "2y", "5y"] else "1y")
+                df_dados = coletor.fetch_asset_data(ticker=ticker, period=str_p)
+
+                if len(df_dados) < 30:
+                    raise ValueError(f"Série temporal insuficiente ({len(df_dados)} registros) para simulação de investimentos.")
+
+                simulador = InvestmentSimulator(
+                    capital_inicial=capital,
+                    aporte_periodico=aporte,
+                    moeda=moeda
+                )
+
+                def callback_progresso_sim(snap: Dict[str, Any]):
+                    with TRAVA_SIMULACOES:
+                        if id_simulacao in SIMULACOES_PROGRESSO:
+                            SIMULACOES_PROGRESSO[id_simulacao].update({
+                                "progresso": snap.get("progress_percentage", 0.0),
+                                "tempo_decorrido": snap.get("elapsed_time", "00:00:00"),
+                                "tempo_restante": snap.get("remaining_time", "Calculando..."),
+                                "tempo_estimado_total": snap.get("estimated_total_time", "Calculando..."),
+                                "algoritmo_atual": snap.get("current_algorithm", ""),
+                                "status_message": snap.get("status_message", "Executando...")
+                            })
+
+                resultado = simulador.simular_multiplos_algoritmos(
+                    df=df_dados,
+                    algoritmos_selecionados=algoritmos_escolhidos,
+                    horizonte=horizonte_obj,
+                    parametros_por_algoritmo=params_algos,
+                    callback_progresso=callback_progresso_sim
+                )
+
+                resultado["asset_name"] = nome_ativo
+                resultado["ticker"] = ticker
+                resultado["currency"] = moeda
+
+                with TRAVA_SIMULACOES:
+                    if id_simulacao in SIMULACOES_PROGRESSO:
+                        SIMULACOES_PROGRESSO[id_simulacao].update({
+                            "progresso": 100.0,
+                            "tempo_restante": "00:00:00",
+                            "status_message": "Simulação de investimentos concluída com sucesso!",
+                            "concluido": True,
+                            "resultado": resultado
+                        })
+
+            except Exception as e_sim:
+                logger.error(f"Erro no trabalhador de simulação {id_simulacao}: {e_sim}", exc_info=True)
+                with TRAVA_SIMULACOES:
+                    if id_simulacao in SIMULACOES_PROGRESSO:
+                        SIMULACOES_PROGRESSO[id_simulacao].update({
+                            "concluido": True,
+                            "erro": str(e_sim),
+                            "status_message": f"Erro: {str(e_sim)}"
+                        })
+
+        thread = threading.Thread(target=trabalhador_simulacao, daemon=True)
+        thread.start()
+
+        return jsonify({
+            "success": True,
+            "sim_id": id_simulacao,
+            "message": "Simulação de carteira iniciada."
+        })
+
+    except Exception as e:
+        logger.error(f"Erro ao iniciar simulação: {e}", exc_info=True)
+        return jsonify({"success": False, "error": str(e)}), 400
+
+
+@app.route("/api/simulator/progress", methods=["GET"])
+def obter_progresso_simulacao():
+    """Retorna o estado em tempo real com cronômetro decorrido e estimado."""
+    id_sim = request.args.get("sim_id") or session.get("id_simulacao_atual")
+    if not id_sim:
+        return jsonify({"concluido": False, "erro": "Nenhuma simulação ativa informada."}), 404
+
+    with TRAVA_SIMULACOES:
+        estado = SIMULACOES_PROGRESSO.get(id_sim)
+        if not estado:
+            return jsonify({"concluido": False, "erro": "Identificador de simulação expirado ou inexistente."}), 404
+        return jsonify(estado)
+
+
+@app.route("/api/optimize", methods=["POST"])
+def otimizar_hiperparametros_api():
+    """Executa busca e otimização multiobjetivo de hiperparâmetros fora da amostra."""
+    try:
+        dados = request.get_json() or {}
+        algoritmo_id = dados.get("algorithm", "xgboost").lower()
+        ticker = dados.get("ticker", "USDBRL=X")
+        grade = dados.get("param_grid") or {
+            "numero_estimadores": [50, 100, 150],
+            "taxa_aprendizado": [0.03, 0.05, 0.10],
+            "profundidade_maxima": [3, 5]
+        }
+
+        coletor = DataFetcher()
+        df = coletor.fetch_asset_data(ticker=ticker, period="1y")
+
+        resultado_otim = HyperparameterOptimizer.otimizar_algoritmo(
+            algoritmo_id=algoritmo_id,
+            df=df,
+            grade_parametros=grade,
+            horizonte_passos=5,
+            max_iteracoes=10
+        )
+
+        return jsonify({"success": True, "optimization": resultado_otim})
+    except Exception as e:
+        logger.error(f"Erro na otimização de hiperparâmetros: {e}", exc_info=True)
+        return jsonify({"success": False, "error": str(e)}), 400
 
 
 def run_web_server(host="127.0.0.1", port=5000, debug=False):

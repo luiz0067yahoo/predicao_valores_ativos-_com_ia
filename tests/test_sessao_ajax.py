@@ -25,7 +25,7 @@ def test_api_algoritmos_catalogo(cliente_teste):
     resposta = cliente_teste.get("/api/algoritmos")
     assert resposta.status_code == 200
     dados = resposta.get_json()
-    assert len(dados["algoritmos"]) == 13
+    assert len(dados["algoritmos"]) == 16
     identificadores = [a["identificador"] for a in dados["algoritmos"]]
     assert "xgboost" in identificadores
     assert "lstm" in identificadores
@@ -34,6 +34,9 @@ def test_api_algoritmos_catalogo(cliente_teste):
     assert "prophet" in identificadores
     assert "rede_neural" in identificadores
     assert "logica_fuzzy" in identificadores
+    assert "mapp" in identificadores
+    assert "ensemble" in identificadores
+    assert "pattern_matching" in identificadores
 
 
 def test_iniciar_treinamento_ajax_e_progresso_sessao(cliente_teste):
