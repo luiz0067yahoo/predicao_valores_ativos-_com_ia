@@ -12,9 +12,10 @@ OUTPUT_DIR = BASE_DIR / "output"
 REPORTS_DIR = OUTPUT_DIR / "reports"
 LOGS_DIR = OUTPUT_DIR / "logs"
 CACHE_DIR = BASE_DIR / "cache"
+DB_DIR = BASE_DIR / "db"
 
 # Criação automática dos diretórios
-for directory in [OUTPUT_DIR, REPORTS_DIR, LOGS_DIR, CACHE_DIR]:
+for directory in [OUTPUT_DIR, REPORTS_DIR, LOGS_DIR, CACHE_DIR, DB_DIR]:
     directory.mkdir(parents=True, exist_ok=True)
 
 # Mapeamento de Ativos Financeiros e Commodities no Yahoo Finance

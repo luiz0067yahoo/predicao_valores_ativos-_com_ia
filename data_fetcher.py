@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 import yfinance as yf
 
-from config import CACHE_DIR
+from config import CACHE_DIR, DB_DIR
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
@@ -18,12 +18,44 @@ logger = logging.getLogger(__name__)
 class DataFetcher:
     """
     Classe responsável por baixar cotações do Yahoo Finance,
-    armazenar em cache local e calcular indicadores técnicos de mercado.
+    armazenar o histórico em arquivos Excel (.xls) dentro da pasta db/
+    e consultar se o intervalo da nova pesquisa já está disponível localmente.
     """
 
     def __init__(self, use_cache: bool = True):
         self.use_cache = use_cache
         self.cache_dir = CACHE_DIR
+        self.db_dir = DB_DIR
+
+    @staticmethod
+    def obter_caminho_arquivo_excel(ticker: str) -> Path:
+        """
+        Retorna o caminho canônico do arquivo Excel no diretório db/.
+        Exemplos:
+        - BTC-USD -> db/bitcoin.xls
+        - USDBRL=X -> db/dolar_usd_brl.xls
+        - ^BVSP -> db/ibovespa.xls
+        """
+        mapa_conhecido = {
+            "BTC-USD": "bitcoin.xls",
+            "BTC-BRL": "bitcoin_brl.xls",
+            "USDBRL=X": "dolar_usd_brl.xls",
+            "EURBRL=X": "euro_eur_brl.xls",
+            "^BVSP": "ibovespa.xls",
+            "ZS=F": "soja_cbot.xls",
+            "ZC=F": "milho_cbot.xls",
+            "KC=F": "cafe_nybot.xls",
+            "BGI=F": "boi_gordo_b3.xls",
+            "CL=F": "petroleo_wti.xls",
+            "GC=F": "ouro.xls",
+            "ETH-USD": "ethereum.xls"
+        }
+        if ticker in mapa_conhecido:
+            nome_arquivo = mapa_conhecido[ticker]
+        else:
+            nome_sanitizado = ticker.lower().replace("^", "").replace("=", "_").replace("-", "_").replace(".", "_")
+            nome_arquivo = f"{nome_sanitizado}.xls"
+        return DB_DIR / nome_arquivo
 
     def fetch_asset_data(
         self,
@@ -33,62 +65,149 @@ class DataFetcher:
         end_date: Optional[str] = None
     ) -> pd.DataFrame:
         """
-        Baixa o histórico de preços do ativo especificado.
-        Se start_date e end_date forem informados, eles terão precedência sobre 'period'.
+        Obtém o histórico de preços do ativo especificado.
+        Primeiro consulta se o intervalo solicitado já está baixado no arquivo .xls correspondente
+        dentro da pasta db/. Se estiver coberto, carrega direto do Excel. Caso contrário, baixa
+        os dados do Yahoo Finance, mescla com os dados prévios e salva a planilha atualizada.
         """
-        logger.info(f"Iniciando download para ticker: {ticker} (Period: {period}, De: {start_date} Até: {end_date})")
-        
+        agora = pd.Timestamp.now()
+        mapa_dias_periodo = {
+            "1mo": 35,
+            "3mo": 100,
+            "6mo": 190,
+            "1y": 375,
+            "2y": 740,
+            "5y": 1850,
+            "max": 3650
+        }
+
+        if start_date and end_date:
+            data_inicio_req = pd.to_datetime(start_date)
+            data_fim_req = pd.to_datetime(end_date)
+            tolerancia_inicio = timedelta(days=4)
+        else:
+            # Tolerância para períodos aproximados (ex: 1mo = ~27-31 dias de histórico)
+            dias_minimos_periodo = {
+                "1mo": 25,
+                "3mo": 80,
+                "6mo": 170,
+                "1y": 350,
+                "2y": 700,
+                "5y": 1780,
+                "max": 3400
+            }
+            dias_req = dias_minimos_periodo.get(period or "1y", 350)
+            data_inicio_req = agora - timedelta(days=dias_req)
+            data_fim_req = agora
+            tolerancia_inicio = timedelta(days=0)
+
+        caminho_excel = self.obter_caminho_arquivo_excel(ticker)
+        df_existente: Optional[pd.DataFrame] = None
+
+        # 1. Consulta se o arquivo Excel já existe e se cobre o intervalo desejado
+        if self.use_cache and caminho_excel.exists():
+            try:
+                df_carregado = pd.read_excel(caminho_excel, index_col=0, engine="openpyxl")
+                df_carregado.index = pd.to_datetime(df_carregado.index)
+                if df_carregado.index.tz is not None:
+                    df_carregado.index = df_carregado.index.tz_localize(None)
+                df_carregado = df_carregado.sort_index()
+
+                if not df_carregado.empty and len(df_carregado) >= 20:
+                    df_existente = df_carregado
+                    data_min_excel = df_carregado.index.min()
+                    data_max_excel = df_carregado.index.max()
+
+                    # Tolerância para finais de semana, feriados e períodos
+                    tolerancia_recente = agora - timedelta(days=5)
+                    coberto_inicio = data_min_excel <= (data_inicio_req + tolerancia_inicio)
+                    coberto_fim = (data_fim_req <= data_max_excel) or (data_max_excel >= tolerancia_recente)
+
+                    if coberto_inicio and coberto_fim:
+                        logger.info(
+                            f"Consulta atendida diretamente do Excel db/{caminho_excel.name} "
+                            f"(cobertura: {data_min_excel.date()} até {data_max_excel.date()})."
+                        )
+                        fatia = df_carregado[
+                            (df_carregado.index >= data_inicio_req) & (df_carregado.index <= data_fim_req)
+                        ]
+                        if len(fatia) >= 20:
+                            return fatia
+                        # Caso a fatia resulte em poucos pontos, usa todo o histórico contido
+                        return df_carregado
+
+            except Exception as e_leitura:
+                logger.warning(f"Erro ao ler cache Excel em {caminho_excel}: {e_leitura}. Baixando novos dados...")
+
+        # 2. Se não estiver coberto, efetua download no Yahoo Finance
+        logger.info(f"Baixando dados para ticker {ticker} no Yahoo Finance...")
         try:
-            # Baixa dados usando o objeto Ticker para maior robustez
             yf_ticker = yf.Ticker(ticker)
             if start_date and end_date:
-                df = yf_ticker.history(start=start_date, end=end_date, auto_adjust=True)
+                df_novo = yf_ticker.history(start=start_date, end=end_date, auto_adjust=True)
             else:
-                df = yf_ticker.history(period=period or "1y", auto_adjust=True)
+                df_novo = yf_ticker.history(period=period or "1y", auto_adjust=True)
 
-            if df is None or df.empty:
-                # Tenta fallback via yf.download
+            if df_novo is None or df_novo.empty:
                 logger.warning(f"Ticker.history retornou vazio para {ticker}. Tentando yf.download...")
                 if start_date and end_date:
-                    df = yf.download(ticker, start=start_date, end=end_date, progress=False)
+                    df_novo = yf.download(ticker, start=start_date, end=end_date, progress=False)
                 else:
-                    df = yf.download(ticker, period=period or "1y", progress=False)
+                    df_novo = yf.download(ticker, period=period or "1y", progress=False)
 
-            if df is None or df.empty:
+            if df_novo is None or df_novo.empty:
+                # Se falhar o download online mas tivermos algum dado em cache Excel, usa o Excel como fallback
+                if df_existente is not None and not df_existente.empty:
+                    logger.warning(f"Falha no download online para {ticker}. Utilizando dados prévios do Excel.")
+                    return df_existente
                 raise ValueError(f"Nenhum dado encontrado para o ticker '{ticker}'. Verifique a conexão ou o código do ativo.")
 
-            # Trata possíveis MultiIndex em colunas em versões recentes do yfinance
-            if isinstance(df.columns, pd.MultiIndex):
-                df.columns = df.columns.get_level_values(0)
+            if isinstance(df_novo.columns, pd.MultiIndex):
+                df_novo.columns = df_novo.columns.get_level_values(0)
 
-            # Limpeza e padronização do índice de datas
-            df.index = pd.to_datetime(df.index)
-            if df.index.tz is not None:
-                df.index = df.index.tz_localize(None)
+            df_novo.index = pd.to_datetime(df_novo.index)
+            if df_novo.index.tz is not None:
+                df_novo.index = df_novo.index.tz_localize(None)
 
-            df = df.sort_index()
-            # Garante que as colunas necessárias existam
-            required_cols = ["Close"]
-            for col in required_cols:
-                if col not in df.columns:
+            df_novo = df_novo.sort_index()
+
+            for col in ["Close"]:
+                if col not in df_novo.columns:
                     raise ValueError(f"Coluna obrigatória '{col}' não está presente nos dados retornados.")
 
-            # Preenchimento de eventuais dados faltantes
-            df["Close"] = df["Close"].ffill().bfill()
-            if "Open" in df.columns:
-                df["Open"] = df["Open"].ffill().bfill()
-            if "High" in df.columns:
-                df["High"] = df["High"].ffill().bfill()
-            if "Low" in df.columns:
-                df["Low"] = df["Low"].ffill().bfill()
-            if "Volume" in df.columns:
-                df["Volume"] = df["Volume"].fillna(0)
+            df_novo["Close"] = df_novo["Close"].ffill().bfill()
+            for c in ["Open", "High", "Low"]:
+                if c in df_novo.columns:
+                    df_novo[c] = df_novo[c].ffill().bfill()
+            if "Volume" in df_novo.columns:
+                df_novo["Volume"] = df_novo["Volume"].fillna(0)
 
-            logger.info(f"Dados baixados com sucesso: {len(df)} registros para {ticker}.")
-            return df
+            # 3. Mescla com os dados existentes no arquivo Excel (se houver) para expandir histórico
+            if df_existente is not None and not df_existente.empty:
+                colunas_comuns = [c for c in df_novo.columns if c in df_existente.columns]
+                df_completo = pd.concat([df_existente[colunas_comuns], df_novo[colunas_comuns]])
+                df_completo = df_completo[~df_completo.index.duplicated(keep="last")].sort_index()
+            else:
+                df_completo = df_novo
+
+            # 4. Salva a série consolidada no arquivo .xls na pasta db/
+            try:
+                self.db_dir.mkdir(parents=True, exist_ok=True)
+                df_completo.to_excel(caminho_excel, engine="openpyxl")
+                logger.info(
+                    f"Histórico de {ticker} salvo em 'db/{caminho_excel.name}' "
+                    f"({len(df_completo)} registros, de {df_completo.index.min().date()} a {df_completo.index.max().date()})."
+                )
+            except Exception as e_salvamento:
+                logger.warning(f"Não foi possível salvar {caminho_excel}: {e_salvamento}")
+
+            return df_completo
 
         except Exception as e:
-            logger.error(f"Erro ao baixar dados para {ticker}: {e}")
+            logger.error(f"Erro ao obter dados para {ticker}: {e}")
+            if df_existente is not None and not df_existente.empty:
+                logger.warning("Recorrendo aos dados disponíveis em cache local Excel.")
+                return df_existente
             raise
 
     @staticmethod

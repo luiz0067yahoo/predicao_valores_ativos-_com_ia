@@ -60,14 +60,25 @@ Clone ou acesse o repositório e instale as bibliotecas necessárias:
 pip install -r requirements.txt
 ```
 
-### 3. Executando a Interface Gráfica (GUI)
-Para iniciar o aplicativo com dashboard interativo:
+### 3. Executando a Interface Web (Recomendado)
+Para iniciar a interface web moderna no navegador com gráficos interativos e streaming em tempo real:
 ```bash
+# Opção A: Execução direta do ponto de entrada (abre o navegador automaticamente)
 python main.py
+
+# Opção B: Execução direta do servidor Flask
+python web_app.py
+```
+Acesse no seu navegador: **http://127.0.0.1:5000**
+
+### 4. Executando a Interface Gráfica Desktop (Tkinter)
+Caso prefira a janela nativa desktop em Tkinter:
+```bash
+python main.py --gui
 ```
 
-### 4. Executando os Testes Automatizados
-Para rodar a suíte completa de testes unitários:
+### 5. Executando os Testes Automatizados
+Para rodar a suíte completa de testes unitários e de integração:
 ```bash
 python -m pytest -v
 ```

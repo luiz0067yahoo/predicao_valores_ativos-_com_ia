@@ -8,6 +8,8 @@ import os
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Optional
+import matplotlib
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import pandas as pd
 from docx import Document
@@ -156,7 +158,7 @@ class ReportGenerator:
         proj_p = metrics['preco_projetado_final']
         var_p = metrics['variacao_esperada_pct']
         trend_str = metrics['tendencia_esperada']
-        horizon_days = metrics['horizonte_dias']
+        horizon_days = metrics.get('horizonte_dias', 5)
 
         summary_text = (
             f"O presente relatório consolida o resultado do treinamento e otimização por Algoritmo Genético "
@@ -341,9 +343,19 @@ class ReportGenerator:
 
         # Salvar documento
         if not output_filepath:
-            clean_ticker = ticker.replace("=", "").replace("^", "").replace("-", "_")
-            ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-            output_filepath = str(REPORTS_DIR / f"Relatorio_Executivo_{clean_ticker}_{ts}.docx")
+            from data_fetcher import DataFetcher
+            nome_base = DataFetcher.obter_caminho_arquivo_excel(ticker).stem
+
+            if prediction_results and "history_df" in prediction_results and not prediction_results["history_df"].empty:
+                idx = prediction_results["history_df"].index
+                dt_ini = pd.to_datetime(idx.min()).strftime("%d-%m-%Y")
+                dt_fim = pd.to_datetime(idx.max()).strftime("%d-%m-%Y")
+            else:
+                agora = datetime.now()
+                dt_fim = agora.strftime("%d-%m-%Y")
+                dt_ini = (agora - timedelta(days=365)).strftime("%d-%m-%Y")
+
+            output_filepath = str(REPORTS_DIR / f"{nome_base} {dt_ini} a {dt_fim}.docx")
 
         doc.save(output_filepath)
         logger.info(f"Relatório executivo DOCX salvo com sucesso em: {output_filepath}")

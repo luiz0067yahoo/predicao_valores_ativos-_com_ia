@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Asset Predictor | Modelagem Preditiva com IA & Séries Temporais</title>
+  <meta name="description" content="Plataforma de alta precisão com 11 algoritmos de Inteligência Artificial, Aprendizado de Máquina, Deep Learning e Simulação Multiagente MiroFish para séries temporais.">
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Chart.js via CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+
+  <!-- Estilos Customizados -->
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body class="dark-theme">
+
+  <!-- Top Navigation Bar -->
+  <header class="navbar">
+    <div class="nav-brand">
+      <div class="brand-icon-pulse">
+        <span class="icon-spark">⚡</span>
+      </div>
+      <div>
+        <h1 class="brand-title">AI ASSET PREDICTOR</h1>
+        <span class="brand-subtitle">Inteligência Artificial & Previsão de Ativos Financeiros</span>
+      </div>
+    </div>
+
+    <div class="nav-status-group">
+      <div id="connection-badge" class="badge-status badge-ready">
+        <span class="pulse-dot"></span>
+        <span id="connection-text">Pronto para Otimização</span>
+      </div>
+      <button id="btn-view-history" class="btn btn-glass" title="Ver Histórico de Ensaios">
+        <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        <span>Histórico</span>
+      </button>
+      <button id="btn-view-reports" class="btn btn-glass" title="Ver Relatórios PDF/DOCX Gerados">
+        <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+        <span>Relatórios Arquivados</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="app-layout">
+
+    <!-- Sidebar de Configurações e Controles -->
+    <aside class="sidebar-panel">
+      <div class="panel-header">
+        <h2>Parâmetros & Modelo</h2>
+        <span id="algo-badge-header" class="badge-tag">IA Multi-Modelo</span>
+      </div>
+
+      <form id="control-form" class="sidebar-form">
+        <!-- 1. Seleção do Algoritmo -->
+        <div class="form-group">
+          <label for="select-algorithm">1. Algoritmo de Inteligência Artificial</label>
+          <div class="select-wrapper">
+            <select id="select-algorithm" class="form-control">
+              <option value="xgboost">⚡ XGBoost (⭐⭐⭐⭐⭐)</option>
+              <option value="lightgbm">🚀 LightGBM (⭐⭐⭐⭐⭐)</option>
+              <option value="random_forest">🌲 Random Forest (⭐⭐⭐⭐)</option>
+              <option value="lstm">🧠 LSTM Recorrente (⭐⭐⭐⭐)</option>
+              <option value="gru">⚡ GRU Recorrente (⭐⭐⭐⭐)</option>
+              <option value="transformer">🔮 Transformer Self-Attention (⭐⭐⭐⭐⭐)</option>
+              <option value="arima_sarima">📐 ARIMA / SARIMA (⭐⭐⭐)</option>
+              <option value="prophet">📈 Prophet (⭐⭐)</option>
+              <option value="regressao_linear">📏 Regressão Linear (⭐⭐)</option>
+              <option value="algoritmo_genetico">🧬 Algoritmo Genético (⭐⭐⭐⭐)</option>
+              <option value="mirofish">🐟 MiroFish Multiagente (⭐⭐⭐⭐⭐)</option>
+              <option value="rede_neural">🧠 Rede Neural Profunda MLP (⭐⭐⭐⭐⭐)</option>
+              <option value="logica_fuzzy">🌊 Lógica Fuzzy / Neuro-Fuzzy (⭐⭐⭐⭐)</option>
+            </select>
+          </div>
+          <small id="algorithm-desc" class="helper-text">Carregando detalhes do algoritmo...</small>
+        </div>
+
+        <!-- 2. Seleção de Ativo -->
+        <div class="form-group">
+          <label for="select-asset">2. Seleção do Ativo</label>
+          <div class="select-wrapper">
+            <select id="select-asset" class="form-control">
+              <option value="" disabled selected>Carregando ativos...</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Ticker Personalizado (exibido apenas se selecionado Custom) -->
+        <div id="custom-ticker-group" class="form-group hidden">
+          <label for="input-custom-ticker">Código do Ticker (Yahoo Finance)</label>
+          <input type="text" id="input-custom-ticker" class="form-control font-mono uppercase" placeholder="Ex: PETR4.SA, AAPL, BTC-USD" value="PETR4.SA">
+          <small class="helper-text">Insira qualquer ticker ativo negociado globalmente.</small>
+        </div>
+
+        <!-- 3. Intervalo Temporal -->
+        <div class="form-group">
+          <label for="select-period">3. Período Histórico</label>
+          <div class="select-wrapper">
+            <select id="select-period" class="form-control">
+              <option value="1mo">1 Mês</option>
+              <option value="3mo">3 Meses</option>
+              <option value="6mo">6 Meses</option>
+              <option value="1y" selected>1 Ano</option>
+              <option value="2y">2 Anos</option>
+              <option value="5y">5 Anos</option>
+              <option value="custom">Personalizado (Datas)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Datas Personalizadas -->
+        <div id="custom-dates-group" class="form-group hidden">
+          <div class="dates-row">
+            <div>
+              <label for="input-start-date">Início</label>
+              <input type="date" id="input-start-date" class="form-control">
+            </div>
+            <div>
+              <label for="input-end-date">Fim</label>
+              <input type="date" id="input-end-date" class="form-control">
+            </div>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- 4. Hiperparâmetros Dinâmicos por Algoritmo -->
+        <div class="collapsible-section">
+          <div class="section-title">
+            <h3 id="params-section-title">4. Parâmetros do Modelo</h3>
+            <span id="params-section-tag" class="badge-mini">Configuração</span>
+          </div>
+
+          <div id="dynamic-params-container" class="params-grid">
+            <!-- Preenchido dinamicamente via JS de acordo com o algoritmo selecionado -->
+          </div>
+        </div>
+
+        <!-- Botão Principal de Otimização (AJAX) -->
+        <div class="action-block">
+          <button type="button" id="btn-run" class="btn btn-primary btn-glow">
+            <span class="btn-icon">🚀</span>
+            <span class="btn-text">Executar Previsão com IA</span>
+          </button>
+        </div>
+
+        <!-- Live Progress Status (AJAX / Sessão) -->
+        <div id="progress-container" class="progress-box hidden">
+          <div class="progress-info">
+            <span id="progress-status-text" class="status-msg">Iniciando motor...</span>
+            <span id="progress-percentage" class="percentage-val">0%</span>
+          </div>
+          <div class="progress-bar-bg">
+            <div id="progress-bar-fill" class="progress-bar-fill" style="width: 0%"></div>
+          </div>
+          <div class="progress-metrics">
+            <span id="prog-extra-1">Passo: <strong id="prog-gen">-</strong></span>
+            <span id="prog-extra-2">Score: <strong id="prog-fit">-</strong></span>
+            <span id="prog-extra-3">RMSE: <strong id="prog-rmse">-</strong></span>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- Ações de Exportação de Relatório (PDF e DOCX) -->
+        <div class="report-actions-grid">
+          <button type="button" id="btn-export-pdf" class="btn btn-pdf" disabled title="Baixar Relatório Executivo em formato PDF">
+            <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+            <span>Baixar PDF (.pdf)</span>
+          </button>
+          <button type="button" id="btn-export-docx" class="btn btn-docx" disabled title="Baixar Relatório Executivo em formato Word">
+            <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+            <span>Baixar Word (.docx)</span>
+          </button>
+        </div>
+
+      </form>
+    </aside>
+
+    <!-- Dashboard Central de Resultados -->
+    <section class="content-dashboard">
+
+      <!-- KPI Summary Cards -->
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-header">
+            <span class="kpi-title">ÚLTIMO PREÇO REAL</span>
+            <span class="kpi-badge badge-neutral">MERCADO</span>
+          </div>
+          <div class="kpi-body">
+            <span id="kpi-actual" class="kpi-value font-mono">--</span>
+          </div>
+          <div class="kpi-footer">
+            <span id="kpi-ticker-label" class="kpi-sub font-mono">Selecione um ativo</span>
+          </div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-header">
+            <span class="kpi-title">PREVISÃO FINAL IA</span>
+            <span id="kpi-algo-badge" class="kpi-badge badge-ai">PROJEÇÃO</span>
+          </div>
+          <div class="kpi-body">
+            <span id="kpi-predicted" class="kpi-value font-mono">--</span>
+          </div>
+          <div class="kpi-footer">
+            <span id="kpi-horizon-label" class="kpi-sub">Horizonte futuro</span>
+          </div>
+        </div>
+
+        <div class="kpi-card" id="kpi-card-variation">
+          <div class="kpi-header">
+            <span class="kpi-title">VARIAÇÃO ESPERADA</span>
+            <span id="kpi-trend-tag" class="kpi-badge badge-neutral">NEUTRO</span>
+          </div>
+          <div class="kpi-body">
+            <span id="kpi-variation" class="kpi-value font-mono">--%</span>
+          </div>
+          <div class="kpi-footer">
+            <span id="kpi-trend-desc" class="kpi-sub">Delta vs. Último Fechamento</span>
+          </div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-header">
+            <span class="kpi-title">RMSE (ERRO QUADRÁTICO)</span>
+            <span class="kpi-badge badge-info">PRECISÃO</span>
+          </div>
+          <div class="kpi-body">
+            <span id="kpi-rmse" class="kpi-value font-mono">--</span>
+          </div>
+          <div class="kpi-footer">
+            <span class="kpi-sub">Dispersão dos resíduos</span>
+          </div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-header">
+            <span class="kpi-title">ACURÁCIA DIRECIONAL</span>
+            <span class="kpi-badge badge-success">ASSERTIVIDADE</span>
+          </div>
+          <div class="kpi-body">
+            <span id="kpi-directional" class="kpi-value font-mono">--%</span>
+          </div>
+          <div class="kpi-footer">
+            <span class="kpi-sub">Acerto de sentido (Alta/Baixa)</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabbed Views Panel -->
+      <div class="dashboard-tabs-container">
+        <div class="tab-nav-bar">
+          <button class="tab-btn active" data-tab="tab-forecast">
+            <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/></svg>
+            <span>Série Histórica & Projeção Futura</span>
+          </button>
+          <button class="tab-btn" data-tab="tab-convergence">
+            <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+            <span>Curva de Aprendizado / Convergência</span>
+          </button>
+          <button class="tab-btn" data-tab="tab-table">
+            <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h18v18H3zM3 9h18M3 15h18M9 3v18M15 3v18"/></svg>
+            <span>Tabela Passo a Passo (95% IC)</span>
+          </button>
+        </div>
+
+        <!-- Aba 1: Gráfico Principal de Preço e Projeção -->
+        <div id="tab-forecast" class="tab-pane active">
+          <div class="chart-wrapper">
+            <div class="chart-header">
+              <div class="chart-title-group">
+                <h3 id="chart-forecast-title">Cotação Histórica e Previsão Futura</h3>
+                <span class="chart-subtitle">Bandas sombreadas representam o intervalo de confiança empírico (95%)</span>
+              </div>
+              <div class="chart-legend-custom">
+                <span class="legend-item"><span class="legend-dot dot-real"></span> Preço Real</span>
+                <span class="legend-item"><span class="legend-dot dot-model"></span> Ajuste do Modelo</span>
+                <span class="legend-item"><span class="legend-dot dot-future"></span> Projeção Futura</span>
+                <span class="legend-item"><span class="legend-dot dot-cone"></span> Confiança 95%</span>
+              </div>
+            </div>
+            <div class="canvas-container">
+              <canvas id="chart-forecast-canvas"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Aba 2: Curva de Convergência / Aprendizado -->
+        <div id="tab-convergence" class="tab-pane">
+          <div class="chart-wrapper">
+            <div class="chart-header">
+              <div class="chart-title-group">
+                <h3 id="chart-conv-title">Curva de Aprendizado e Desempenho</h3>
+                <span id="chart-conv-subtitle" class="chart-subtitle">Evolução do erro ou função de aptidão</span>
+              </div>
+              <div class="chart-legend-custom">
+                <span class="legend-item"><span class="legend-dot dot-best"></span> Desempenho / Inverso da Perda</span>
+                <span class="legend-item"><span class="legend-dot dot-avg"></span> Média Móvel</span>
+              </div>
+            </div>
+            <div class="canvas-container">
+              <canvas id="chart-convergence-canvas"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Aba 3: Tabela Detalhada de Projeção -->
+        <div id="tab-table" class="tab-pane">
+          <div class="table-card">
+            <div class="table-header-bar">
+              <h3>Detalhamento Diário da Projeção</h3>
+              <span id="table-info-counter" class="badge-mini">0 dias projetados</span>
+            </div>
+            <div class="table-responsive">
+              <table id="forecast-table" class="data-table">
+                <thead>
+                  <tr>
+                    <th>Data Projetada</th>
+                    <th>Preço Estimado</th>
+                    <th>Limite Inferior (95%)</th>
+                    <th>Limite Superior (95%)</th>
+                    <th>Variação Estimada</th>
+                    <th>Direção</th>
+                  </tr>
+                </thead>
+                <tbody id="forecast-table-body">
+                  <tr>
+                    <td colspan="6" class="empty-state-cell">Nenhuma previsão calculada ainda. Clique em "Executar Previsão com IA".</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </section>
+  </main>
+
+  <!-- Modal / Drawer de Histórico de Ensaios -->
+  <div id="modal-history" class="modal-backdrop hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <h3>Histórico de Ensaios & Experimentos</h3>
+          <p>Registros salvos em <code>output/logs/historico_ensaios.csv</code></p>
+        </div>
+        <button class="modal-close" id="btn-close-history">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="table-responsive modal-table-scroll">
+          <table class="data-table table-compact">
+            <thead>
+              <tr>
+                <th>Data/Hora</th>
+                <th>Ativo</th>
+                <th>Ticker</th>
+                <th>Período</th>
+                <th>Preço Atual</th>
+                <th>Alvo IA</th>
+                <th>Variação</th>
+                <th>RMSE</th>
+                <th>Acurácia</th>
+                <th>Tendência / Modelo</th>
+              </tr>
+            </thead>
+            <tbody id="history-table-body">
+              <tr>
+                <td colspan="10" class="empty-state-cell">Carregando histórico...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="btn-refresh-history">Atualizar</button>
+        <button class="btn btn-glass" id="btn-close-history-footer">Fechar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal / Drawer de Relatórios PDF e DOCX Arquivados -->
+  <div id="modal-reports" class="modal-backdrop hidden">
+    <div class="modal-card modal-card-sm">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <h3>Relatórios Arquivados (PDF & DOCX)</h3>
+          <p>Documentos executivos gerados em <code>output/reports/</code></p>
+        </div>
+        <button class="modal-close" id="btn-close-reports">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div id="reports-list-container" class="reports-list">
+          <p class="empty-state-cell">Carregando lista de relatórios...</p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="btn-refresh-reports">Atualizar</button>
+        <button class="btn btn-glass" id="btn-close-reports-footer">Fechar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- Script da Aplicação -->
+  <script src="/static/js/app.js"></script>
+</body>
+</html>
