@@ -1,4 +1,4 @@
-# Classificador de Regimes de Mercado (`MarketRegimeDetector`)
+w# Classificador de Regimes de Mercado (`MarketRegimeDetector`)
 
 ## 1. Visão Geral
 O classificador de regimes de mercado categoriza dinamicamente cada barra histórica em um dos 8 regimes fundamentais, utilizando métricas simultâneas de tendência, volatilidade, momentum e volume.

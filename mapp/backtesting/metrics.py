@@ -35,6 +35,10 @@ class MetricasBacktesting:
     r2: float
     acuracia_direcional_pct: float
 
+    @property
+    def sharpe(self) -> float:
+        return self.sharpe_ratio
+
     def para_dicionario(self) -> Dict[str, Any]:
         """Serializa em formato JSON amigável com arredondamentos elegantes."""
         return {

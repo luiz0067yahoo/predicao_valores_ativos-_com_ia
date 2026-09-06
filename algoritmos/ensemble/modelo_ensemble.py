@@ -148,8 +148,8 @@ class ModeloEnsemble(BaseAlgoritmo):
         preco_proj_final = float(projs_ponderadas[-1])
 
         metricas = self.calcular_metricas_estatisticas(
-            precos_reais=df_hist_base["Preco_Real"].values,
-            precos_previstos=previsoes_hist_ponderadas,
+            precos_reais=df_hist_final["Preco_Real"].values,
+            precos_previstos=df_hist_final["Preco_Previsto_IA"].values,
             preco_real_final=preco_atual,
             preco_projetado_final=preco_proj_final,
             horizonte_dias=horizonte_projecao

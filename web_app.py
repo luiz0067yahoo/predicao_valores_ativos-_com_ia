@@ -766,6 +766,8 @@ def iniciar_simulacao_carteira():
     """
     try:
         dados = request.get_json() or {}
+        if not dados:
+            return jsonify({"error": "Parâmetros não fornecidos."}), 400
         ativo = dados.get("asset", dados.get("ativo", "Petrobras (PETR4.SA)"))
         custom_ticker = dados.get("custom_ticker", "").strip().upper()
 

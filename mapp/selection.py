@@ -19,6 +19,20 @@ class SeletorCaracteristicas:
     eliminando ruído e redundâncias para evitar overfitting.
     """
 
+    def __init__(self, n_features_selecionar: int = 25, limite_correlacao: float = 0.92):
+        self.n_features_selecionar = n_features_selecionar
+        self.limite_correlacao = limite_correlacao
+
+    def selecionar_features(self, X: pd.DataFrame, y: np.ndarray) -> List[str]:
+        return self.selecionar_melhores_features(
+            X=X,
+            y=y,
+            max_features=self.n_features_selecionar,
+            limiar_correlacao=self.limite_correlacao
+        )
+
+    selecionar = selecionar_features
+
     @classmethod
     def selecionar_melhores_features(
         cls,
@@ -93,7 +107,11 @@ class ValidadorAntiVazamento:
 
         # 2. Cria cópia e perturba os dados APÓS a barra de corte
         df_perturbado = df_amostra.copy()
-        df_perturbado.iloc[barra_corte:, df_perturbado.columns.get_loc("Close")] *= 2.5
+        if "Close" in df_perturbado.columns:
+            df_perturbado.iloc[barra_corte:, df_perturbado.columns.get_loc("Close")] *= 2.5
+        elif len(df_perturbado.columns) > 0:
+            df_perturbado.iloc[barra_corte:, 0] *= 2.5
+
         if "High" in df_perturbado.columns:
             df_perturbado.iloc[barra_corte:, df_perturbado.columns.get_loc("High")] *= 2.7
         if "Low" in df_perturbado.columns:
