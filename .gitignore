@@ -10,3 +10,8 @@ venv/
 env/
 .idea/
 .vscode/
+
+# Dados e saídas geradas
+db/
+output/
+
