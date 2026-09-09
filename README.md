@@ -85,7 +85,7 @@ Explore a documentação modular detalhada nas pastas dedicadas:
 
 ### 2. Instalação das Dependências
 ```bash
-python pip install -r requirements.txt
+python -m pip install -r requirements.txt
 ```
 
 ### 3. Inicialização da Plataforma Web
