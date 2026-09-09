@@ -5,13 +5,18 @@ __pycache__/
 .coverage
 htmlcov/
 cache/
+# Ambientes virtuais e IDEs
 .env
 venv/
 env/
 .idea/
 .vscode/
 
-# Dados e saídas geradas
+# Dados, planilhas e saídas geradas
 db/
 output/
+*.xls
+*.xlsx
+*.csv
+
 
