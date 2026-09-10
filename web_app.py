@@ -181,6 +181,8 @@ def _extrair_parametros_requisicao(dados: Dict[str, Any]) -> Dict[str, Any]:
         mut_val = float(dados["mutation_rate"])
         hiperparametros["taxa_mutacao"] = mut_val / 100.0 if mut_val > 1.0 else mut_val
 
+    data_alvo_projecao = dados.get("data_alvo_projecao", dados.get("data_fim_projecao", dados.get("target_date", ""))).strip() or None
+
     taxa_mut_val = float(hiperparametros.get("taxa_mutacao", 0.1))
     pop_size_val = int(hiperparametros.get("tamanho_populacao", 50))
     gen_val = int(hiperparametros.get("numero_geracoes", 20))
@@ -198,6 +200,7 @@ def _extrair_parametros_requisicao(dados: Dict[str, Any]) -> Dict[str, Any]:
         "start_date": data_inicio,
         "data_fim": data_fim,
         "end_date": data_fim,
+        "data_alvo_projecao": data_alvo_projecao,
         "algoritmo": identificador_algoritmo,
         "algorithm": identificador_algoritmo,
         "horizonte": horizonte,
@@ -225,6 +228,7 @@ def _executar_pipeline_modelo(parametros: Dict[str, Any], callback_progresso=Non
     str_periodo = parametros["str_periodo"]
     data_inicio = parametros["data_inicio"]
     data_fim = parametros["data_fim"]
+    data_alvo_projecao = parametros.get("data_alvo_projecao")
     algoritmo_id = parametros["algoritmo"]
     horizonte = parametros["horizonte"]
     hiperparametros = parametros["hiperparametros"]
@@ -319,15 +323,93 @@ def _executar_pipeline_modelo(parametros: Dict[str, Any], callback_progresso=Non
     ]
 
     df_proj = resultados["forecast_df"]
-    pontos_projecao = [
-        {
-            "date": dt.strftime("%Y-%m-%d"),
-            "projected": float(linha["Preco_Projetado"]),
+    comparacao_data_final = {
+        "tem_valor_real": False,
+        "data_alvo": None,
+        "preco_projetado": None,
+        "preco_real": None,
+        "diferenca_absoluta": None,
+        "diferenca_pct": None,
+        "acuracia_pct": None,
+        "acertou_direcao": None,
+        "mensagem": "Projeção futura (cotação de mercado em aberto)."
+    }
+
+    df_validacao = None
+    try:
+        dt_inicio_proj = pd.to_datetime(df_proj.index.min()).strftime("%Y-%m-%d")
+        dt_fim_proj = pd.to_datetime(df_proj.index.max()).strftime("%Y-%m-%d")
+        if pd.to_datetime(dt_inicio_proj) <= pd.Timestamp.now().normalize():
+            df_validacao = coletor.fetch_asset_data(
+                ticker=ticker,
+                start_date=dt_inicio_proj,
+                end_date=dt_fim_proj
+            )
+    except Exception as e_val:
+        logger.info(f"Cotações de validação para o horizonte de projeção não disponíveis: {e_val}")
+        df_validacao = None
+
+    pontos_projecao = []
+    for dt, linha in df_proj.iterrows():
+        dt_str = dt.strftime("%Y-%m-%d")
+        preco_proj = float(linha["Preco_Projetado"])
+        preco_real_val = None
+        erro_pct = None
+
+        if df_validacao is not None and not df_validacao.empty:
+            dt_norm = pd.to_datetime(dt).normalize()
+            if dt_norm in df_validacao.index:
+                col_c = "Close" if "Close" in df_validacao.columns else df_validacao.columns[0]
+                preco_real_val = float(df_validacao.loc[dt_norm, col_c])
+                erro_pct = ((preco_proj - preco_real_val) / preco_real_val) * 100.0
+
+        pontos_projecao.append({
+            "date": dt_str,
+            "projected": preco_proj,
             "lower": float(linha["Limite_Inferior"]),
-            "upper": float(linha["Limite_Superior"])
-        }
-        for dt, linha in df_proj.iterrows()
-    ]
+            "upper": float(linha["Limite_Superior"]),
+            "real": preco_real_val,
+            "error_pct": erro_pct
+        })
+
+    # Análise de comparação na Data Final (Date Picker)
+    if pontos_projecao:
+        ultimo_ponto = pontos_projecao[-1]
+        data_final_str = data_alvo_projecao or ultimo_ponto["date"]
+        ponto_alvo = next((p for p in pontos_projecao if p["date"] == data_final_str), ultimo_ponto)
+
+        if ponto_alvo.get("real") is not None:
+            p_proj = ponto_alvo["projected"]
+            p_real = ponto_alvo["real"]
+            diff_abs = p_proj - p_real
+            diff_pct = ((p_proj - p_real) / p_real) * 100.0
+            ultimo_real = float(metricas["ultimo_preco_real"])
+            direcao_real = p_real >= ultimo_real
+            direcao_proj = p_proj >= ultimo_real
+
+            comparacao_data_final = {
+                "tem_valor_real": True,
+                "data_alvo": ponto_alvo["date"],
+                "preco_projetado": p_proj,
+                "preco_real": p_real,
+                "diferenca_absoluta": diff_abs,
+                "diferenca_pct": diff_pct,
+                "acuracia_pct": max(0.0, 100.0 - abs(diff_pct)),
+                "acertou_direcao": (direcao_real == direcao_proj),
+                "mensagem": f"Cotação real em {ponto_alvo['date']}: {moeda} {p_real:.2f} (Desvio IA: {diff_pct:+.2f}%)"
+            }
+        else:
+            comparacao_data_final = {
+                "tem_valor_real": False,
+                "data_alvo": ponto_alvo["date"],
+                "preco_projetado": ponto_alvo["projected"],
+                "preco_real": None,
+                "diferenca_absoluta": None,
+                "diferenca_pct": None,
+                "acuracia_pct": None,
+                "acertou_direcao": None,
+                "mensagem": f"Data futura em aberto: Projeção estimada em {moeda} {ponto_alvo['projected']:.2f} para {ponto_alvo['date']}."
+            }
 
     historico_aprendizado = resultados.get("ga_history", {})
 
@@ -374,6 +456,7 @@ def _executar_pipeline_modelo(parametros: Dict[str, Any], callback_progresso=Non
         ULTIMO_RESULTADO["data_inicio_formatada"] = data_inicio_formatada
         ULTIMO_RESULTADO["data_fim_formatada"] = data_fim_formatada
         ULTIMO_RESULTADO["nome_base_arquivo"] = nome_base_arquivo
+        ULTIMO_RESULTADO["target_comparison"] = comparacao_data_final
 
     return {
         "success": True,
@@ -385,6 +468,7 @@ def _executar_pipeline_modelo(parametros: Dict[str, Any], callback_progresso=Non
         "metrics": metricas,
         "history": pontos_historico,
         "forecast": pontos_projecao,
+        "target_comparison": comparacao_data_final,
         "ga_history": historico_aprendizado,
         "data_inicio_formatada": data_inicio_formatada,
         "data_fim_formatada": data_fim_formatada,

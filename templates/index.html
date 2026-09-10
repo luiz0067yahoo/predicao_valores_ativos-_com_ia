@@ -120,34 +120,36 @@
           <small class="helper-text">Insira qualquer ticker ativo negociado globalmente.</small>
         </div>
 
-        <!-- 3. Intervalo Temporal -->
+        <!-- 3. Intervalo Temporal / Período Histórico -->
         <div class="form-group">
           <label for="select-period">3. Período Histórico</label>
           <div class="select-wrapper">
             <select id="select-period" class="form-control">
+              <option value="2020_2025" selected>2020 a 2025 (Padrão: 01/01/2020 - 31/12/2025)</option>
+              <option value="custom">Personalizado (Campos de Data)</option>
               <option value="1mo">1 Mês</option>
               <option value="3mo">3 Meses</option>
               <option value="6mo">6 Meses</option>
               <option value="1y">1 Ano</option>
               <option value="2y">2 Anos</option>
-              <option value="5y" selected>5 Anos</option>
-              <option value="custom">Personalizado (Datas)</option>
+              <option value="5y">5 Anos</option>
             </select>
           </div>
         </div>
 
-        <!-- Datas Personalizadas -->
-        <div id="custom-dates-group" class="form-group hidden">
+        <!-- Datas Personalizadas (Início e Fim) -->
+        <div id="custom-dates-group" class="form-group">
           <div class="dates-row">
             <div>
-              <label for="input-start-date">Início</label>
-              <input type="date" id="input-start-date" class="form-control">
+              <label for="input-start-date">Início (Data Inicial)</label>
+              <input type="date" id="input-start-date" class="form-control" value="2020-01-01">
             </div>
             <div>
-              <label for="input-end-date">Fim</label>
-              <input type="date" id="input-end-date" class="form-control">
+              <label for="input-end-date">Fim (Data Final)</label>
+              <input type="date" id="input-end-date" class="form-control" value="2025-12-31">
             </div>
           </div>
+          <small class="helper-text">Período predefinido: <strong>01/01/2020</strong> a <strong>31/12/2025</strong> (totalmente editável).</small>
         </div>
 
         <div class="divider"></div>
@@ -289,6 +291,39 @@
         </div>
       </div>
 
+      <!-- Card de Comparação Real vs. Previsão na Data Final (Date Picker) -->
+      <div id="target-comparison-card" class="target-comparison-box hidden">
+        <div class="comparison-header">
+          <div class="comparison-title-badge">
+            <span class="icon-spark">🎯</span>
+            <h4>Comparação na Data Final (Date Picker)</h4>
+            <span id="target-date-badge" class="badge-tag">Data Alvo: --/--/----</span>
+          </div>
+          <span id="target-status-tag" class="kpi-badge badge-neutral">Aguardando</span>
+        </div>
+        <div class="comparison-grid">
+          <div class="comp-col">
+            <span class="comp-label">Preço Previsto (IA)</span>
+            <span id="comp-projected-val" class="comp-value font-mono">--</span>
+          </div>
+          <div class="comp-col">
+            <span class="comp-label">Preço Real de Mercado</span>
+            <span id="comp-real-val" class="comp-value font-mono">--</span>
+          </div>
+          <div class="comp-col">
+            <span class="comp-label">Diferença (Desvio)</span>
+            <span id="comp-diff-val" class="comp-value font-mono">--</span>
+          </div>
+          <div class="comp-col">
+            <span class="comp-label">Acurácia na Data Final</span>
+            <span id="comp-accuracy-val" class="comp-value font-mono">--</span>
+          </div>
+        </div>
+        <div class="comparison-footer">
+          <span id="comp-message" class="comp-msg">Análise de aderência entre previsão da IA e cotação real do mercado.</span>
+        </div>
+      </div>
+
       <!-- Tabbed Views Panel -->
       <div class="dashboard-tabs-container">
         <div class="tab-nav-bar">
@@ -322,9 +357,9 @@
                   (95%)</span>
               </div>
               <div class="chart-legend-custom">
-                <span class="legend-item"><span class="legend-dot dot-real"></span> Preço Real</span>
+                <span class="legend-item"><span class="legend-dot dot-real"></span> Preço Real Histórico</span>
                 <span class="legend-item"><span class="legend-dot dot-model"></span> Ajuste do Modelo</span>
-                <span class="legend-item"><span class="legend-dot dot-future"></span> Projeção Futura</span>
+                <span class="legend-item"><span class="legend-dot dot-future"></span> Projeção Futura IA</span>
                 <span class="legend-item"><span class="legend-dot dot-cone"></span> Confiança 95%</span>
               </div>
             </div>
@@ -357,7 +392,7 @@
         <div id="tab-table" class="tab-pane">
           <div class="table-card">
             <div class="table-header-bar">
-              <h3>Detalhamento Diário da Projeção</h3>
+              <h3>Detalhamento Diário da Projeção & Comparação Real</h3>
               <span id="table-info-counter" class="badge-mini">0 dias projetados</span>
             </div>
             <div class="table-responsive">
@@ -365,16 +400,17 @@
                 <thead>
                   <tr>
                     <th>Data Projetada</th>
-                    <th>Preço Estimado</th>
+                    <th>Preço Previsto IA</th>
+                    <th>Preço Real Mercado</th>
+                    <th>Desvio Real vs IA</th>
                     <th>Limite Inferior (95%)</th>
                     <th>Limite Superior (95%)</th>
-                    <th>Variação Estimada</th>
                     <th>Direção</th>
                   </tr>
                 </thead>
                 <tbody id="forecast-table-body">
                   <tr>
-                    <td colspan="6" class="empty-state-cell">Nenhuma previsão calculada ainda. Clique em "Executar
+                    <td colspan="7" class="empty-state-cell">Nenhuma previsão calculada ainda. Clique em "Executar
                       Previsão com IA".</td>
                   </tr>
                 </tbody>

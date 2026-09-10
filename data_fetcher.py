@@ -81,11 +81,13 @@ class DataFetcher:
         Como o Yahoo Finance descontinuou o ticker direto 'BTC-BRL', o valor é
         sintetizado multiplicando o preço do BTC em dólares pela cotação do Dólar (USD/BRL).
         Os dados de câmbio são interpolados e propagados para cobrir finais de semana e feriados.
+        Quando for criar ou atualizar o XLS em db/, baixa todos os valores diários históricos disponíveis.
         """
-        logger.info("Sintetizando histórico de BTC-BRL a partir de BTC-USD e USDBRL=X...")
+        logger.info("Sintetizando histórico completo diário de BTC-BRL a partir de BTC-USD e USDBRL=X...")
         try:
-            df_btc = self.fetch_asset_data("BTC-USD", period=period, start_date=start_date, end_date=end_date)
-            df_usd = self.fetch_asset_data("USDBRL=X", period=period, start_date=start_date, end_date=end_date)
+            # Baixa todos os valores diários históricos disponíveis (period='max') para salvar o banco completo
+            df_btc = self.fetch_asset_data("BTC-USD", period="max")
+            df_usd = self.fetch_asset_data("USDBRL=X", period="max")
         except Exception as e_sint:
             logger.warning(f"Erro ao obter componentes para sintetizar BTC-BRL: {e_sint}")
             if df_existente is not None and not df_existente.empty:
@@ -134,17 +136,42 @@ class DataFetcher:
         else:
             df_completo = df_brl
 
-        # Salva em db/bitcoin_brl.xls
+        # Salva todos os valores diários em db/bitcoin_brl.xls
         caminho_excel = self.obter_caminho_arquivo_excel("BTC-BRL")
         try:
             self.db_dir.mkdir(parents=True, exist_ok=True)
             df_completo.to_excel(caminho_excel, engine="openpyxl")
             logger.info(
-                f"Histórico consolidado de BTC-BRL salvo em 'db/{caminho_excel.name}' "
+                f"Histórico consolidado com todos os valores diários de BTC-BRL salvo em 'db/{caminho_excel.name}' "
                 f"({len(df_completo)} registros, de {df_completo.index.min().date()} a {df_completo.index.max().date()})."
             )
         except Exception as e_salvamento:
             logger.warning(f"Não foi possível salvar {caminho_excel}: {e_salvamento}")
+
+        # Retorna a fatia solicitada pelo chamador se houver restrição de datas
+        if start_date and end_date:
+            data_inicio_req = pd.to_datetime(start_date)
+            data_fim_req = pd.to_datetime(end_date)
+            fatia = df_completo[
+                (df_completo.index >= data_inicio_req) & (df_completo.index <= data_fim_req)
+            ]
+            if len(fatia) >= 20:
+                return fatia
+        elif period and period != "max":
+            agora = pd.Timestamp.now()
+            dias_minimos_periodo = {
+                "1mo": 35,
+                "3mo": 100,
+                "6mo": 190,
+                "1y": 375,
+                "2y": 740,
+                "5y": 1850
+            }
+            dias_req = dias_minimos_periodo.get(period, 375)
+            data_inicio_req = agora - timedelta(days=dias_req)
+            fatia = df_completo[df_completo.index >= data_inicio_req]
+            if len(fatia) >= 20:
+                return fatia
 
         return df_completo
 
@@ -159,7 +186,9 @@ class DataFetcher:
         Obtém o histórico de preços do ativo especificado.
         Primeiro consulta se o intervalo solicitado já está baixado no arquivo .xls correspondente
         dentro da pasta db/. Se estiver coberto, carrega direto do Excel. Caso contrário, baixa
-        os dados do Yahoo Finance, mescla com os dados prévios e salva a planilha atualizada.
+        todos os valores diários disponíveis do Yahoo Finance (period='max' / histórico completo),
+        mescla com os dados prévios e salva a planilha com todos os valores diários em db/,
+        retornando a fatia solicitada.
         """
         # Normaliza tickers de ETFs e ativos da B3 caso venham sem o sufixo .SA
         etfs_b3 = {"IVVB11", "SPXI11", "SPXB11", "SPXR11", "SPBZ11"}
@@ -167,15 +196,6 @@ class DataFetcher:
             ticker = f"{ticker.upper()}.SA"
 
         agora = pd.Timestamp.now()
-        mapa_dias_periodo = {
-            "1mo": 35,
-            "3mo": 100,
-            "6mo": 190,
-            "1y": 375,
-            "2y": 740,
-            "5y": 1850,
-            "max": 3650
-        }
 
         if start_date and end_date:
             data_inicio_req = pd.to_datetime(start_date)
@@ -244,21 +264,24 @@ class DataFetcher:
                 df_existente=df_existente
             )
 
-        # 3. Se não estiver coberto, efetua download no Yahoo Finance
-        logger.info(f"Baixando dados para ticker {ticker} no Yahoo Finance...")
+        # 3. Se não estiver coberto ou ao criar o XLS em db/, baixa TODOS os valores diários (period='max' / histórico completo)
+        logger.info(f"Baixando todos os valores diários de {ticker} no Yahoo Finance para criar/atualizar db/{caminho_excel.name}...")
         try:
             yf_ticker = yf.Ticker(ticker)
-            if start_date and end_date:
-                df_novo = yf_ticker.history(start=start_date, end=end_date, auto_adjust=True)
-            else:
-                df_novo = yf_ticker.history(period=period or "1y", auto_adjust=True)
+
+            # Baixa todos os valores diários históricos disponíveis
+            df_novo = yf_ticker.history(period="max", interval="1d", auto_adjust=True)
 
             if df_novo is None or df_novo.empty:
-                logger.warning(f"Ticker.history retornou vazio para {ticker}. Tentando yf.download...")
-                if start_date and end_date:
+                logger.warning(f"Ticker.history(period='max') retornou vazio para {ticker}. Tentando yf.download(period='max')...")
+                df_novo = yf.download(ticker, period="max", interval="1d", progress=False)
+
+            # Fallback com parâmetros de data explícitos se period='max' falhar
+            if (df_novo is None or df_novo.empty) and start_date and end_date:
+                logger.warning(f"Tentando download com datas explícitas ({start_date} a {end_date})...")
+                df_novo = yf_ticker.history(start=start_date, end=end_date, auto_adjust=True)
+                if df_novo is None or df_novo.empty:
                     df_novo = yf.download(ticker, start=start_date, end=end_date, progress=False)
-                else:
-                    df_novo = yf.download(ticker, period=period or "1y", progress=False)
 
             if df_novo is None or df_novo.empty:
                 # Se falhar o download online mas tivermos algum dado em cache Excel, usa o Excel como fallback
@@ -287,7 +310,7 @@ class DataFetcher:
             if "Volume" in df_novo.columns:
                 df_novo["Volume"] = df_novo["Volume"].fillna(0)
 
-            # 3. Mescla com os dados existentes no arquivo Excel (se houver) para expandir histórico
+            # 4. Mescla com os dados existentes no arquivo Excel (se houver) para consolidar histórico completo
             if df_existente is not None and not df_existente.empty:
                 colunas_comuns = [c for c in df_novo.columns if c in df_existente.columns]
                 df_completo = pd.concat([df_existente[colunas_comuns], df_novo[colunas_comuns]])
@@ -295,16 +318,30 @@ class DataFetcher:
             else:
                 df_completo = df_novo
 
-            # 4. Salva a série consolidada no arquivo .xls na pasta db/
+            # 5. Salva TODOS os valores diários no arquivo .xls na pasta db/
             try:
                 self.db_dir.mkdir(parents=True, exist_ok=True)
                 df_completo.to_excel(caminho_excel, engine="openpyxl")
                 logger.info(
-                    f"Histórico de {ticker} salvo em 'db/{caminho_excel.name}' "
-                    f"({len(df_completo)} registros, de {df_completo.index.min().date()} a {df_completo.index.max().date()})."
+                    f"Histórico com todos os valores diários de {ticker} salvo em 'db/{caminho_excel.name}' "
+                    f"({len(df_completo)} registros diários, de {df_completo.index.min().date()} a {df_completo.index.max().date()})."
                 )
             except Exception as e_salvamento:
                 logger.warning(f"Não foi possível salvar {caminho_excel}: {e_salvamento}")
+
+            # 6. Retorna a fatia solicitada pelo chamador
+            if start_date and end_date:
+                fatia = df_completo[
+                    (df_completo.index >= data_inicio_req) & (df_completo.index <= data_fim_req)
+                ]
+                if len(fatia) >= 20:
+                    return fatia
+            elif period and period != "max":
+                fatia = df_completo[
+                    (df_completo.index >= data_inicio_req) & (df_completo.index <= data_fim_req)
+                ]
+                if len(fatia) >= 20:
+                    return fatia
 
             return df_completo
 
@@ -314,6 +351,26 @@ class DataFetcher:
                 logger.warning("Recorrendo aos dados disponíveis em cache local Excel.")
                 return df_existente
             raise
+
+    def atualizar_todos_ativos_db(self) -> Dict[str, Path]:
+        """
+        Percorre todos os ativos mapeados no sistema, baixa todos os valores diários
+        históricos disponíveis via Yahoo Finance e salva/atualiza as planilhas .xls no diretório db/.
+        Retorna um dicionário mapeando ticker para o caminho do arquivo gerado.
+        """
+        from config import ASSETS
+        arquivos_atualizados = {}
+        for nome_ativo, info in ASSETS.items():
+            ticker = info["ticker"]
+            logger.info(f"Atualizando banco diário completo para {nome_ativo} ({ticker})...")
+            try:
+                # Força download completo de todos os valores diários
+                caminho = self.obter_caminho_arquivo_excel(ticker)
+                self.fetch_asset_data(ticker=ticker, period="max")
+                arquivos_atualizados[ticker] = caminho
+            except Exception as e_ativo:
+                logger.error(f"Erro ao atualizar {nome_ativo} ({ticker}): {e_ativo}")
+        return arquivos_atualizados
 
     @staticmethod
     def calculate_technical_indicators(df: pd.DataFrame) -> pd.DataFrame:

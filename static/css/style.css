@@ -278,9 +278,9 @@ body {
 }
 
 .form-group label {
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: var(--text-secondary);
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #f1f5f9;
   letter-spacing: 0.01em;
 }
 
@@ -294,44 +294,150 @@ body {
   right: 14px;
   top: 50%;
   transform: translateY(-50%);
-  color: var(--text-muted);
+  color: #cbd5e1;
   pointer-events: none;
   font-size: 0.9rem;
 }
 
 .form-control {
   width: 100%;
-  background: rgba(11, 17, 32, 0.9);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(30, 45, 75, 0.95);
+  border: 1.5px solid rgba(255, 255, 255, 0.28);
   border-radius: 8px;
   padding: 9px 12px;
-  color: var(--text-primary);
+  color: #ffffff !important;
   font-family: var(--font-sans);
-  font-size: 0.88rem;
+  font-size: 0.9rem;
+  font-weight: 600;
   outline: none;
   transition: var(--transition-normal);
   appearance: none;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.25);
+}
+
+.form-control:hover {
+  background: rgba(38, 56, 92, 0.98);
+  border-color: rgba(56, 189, 248, 0.65);
 }
 
 .form-control:focus {
-  border-color: var(--border-focus);
-  box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.15);
+  background: rgba(35, 52, 86, 1);
+  border-color: #38bdf8;
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.35), 0 0 12px rgba(56, 189, 248, 0.2);
 }
 
 .form-control:disabled {
-  opacity: 0.6;
+  opacity: 0.7;
   cursor: not-allowed;
 }
 
+select.form-control option {
+  background: #1e293b;
+  color: #ffffff;
+  font-weight: 500;
+  padding: 8px;
+}
+
 .helper-text {
-  font-size: 0.72rem;
-  color: var(--text-muted);
+  font-size: 0.74rem;
+  color: #cbd5e1;
+}
+
+.helper-text strong {
+  color: #38bdf8;
+  font-weight: 700;
 }
 
 .dates-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 10px;
+}
+
+.dates-row label {
+  color: #f8fafc;
+  font-weight: 700;
+  font-size: 0.82rem;
+}
+
+/* Estilização de Alto Contraste e Máxima Clareza para Campos de Data (Date Pickers) */
+input[type="date"] {
+  color-scheme: dark;
+  background: rgba(38, 58, 96, 0.98);
+  border: 1.5px solid rgba(255, 255, 255, 0.38);
+  color: #ffffff !important;
+  font-weight: 700;
+  font-size: 0.92rem;
+  letter-spacing: 0.02em;
+  padding: 9px 12px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  transition: all 0.2s ease;
+}
+
+input[type="date"]:hover {
+  background: rgba(46, 70, 114, 1);
+  border-color: rgba(56, 189, 248, 0.85);
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.3);
+}
+
+input[type="date"]:focus {
+  background: rgba(42, 64, 106, 1);
+  border-color: #38bdf8;
+  box-shadow: 0 0 0 3.5px rgba(56, 189, 248, 0.4), 0 0 16px rgba(56, 189, 248, 0.3);
+}
+
+/* Formatação do texto e segmentos internos de data para contraste nítido */
+input[type="date"]::-webkit-datetime-edit {
+  color: #ffffff;
+  font-weight: 700;
+}
+
+input[type="date"]::-webkit-datetime-edit-fields-wrapper {
+  color: #ffffff;
+}
+
+input[type="date"]::-webkit-datetime-edit-text {
+  color: #cbd5e1;
+  font-weight: 700;
+  padding: 0 2px;
+}
+
+input[type="date"]::-webkit-datetime-edit-month-field,
+input[type="date"]::-webkit-datetime-edit-day-field,
+input[type="date"]::-webkit-datetime-edit-year-field {
+  color: #ffffff;
+  font-weight: 700;
+}
+
+input[type="date"]::-webkit-datetime-edit-month-field:focus,
+input[type="date"]::-webkit-datetime-edit-day-field:focus,
+input[type="date"]::-webkit-datetime-edit-year-field:focus {
+  background-color: #0284c7;
+  color: #ffffff;
+  border-radius: 3px;
+}
+
+/* Ícone de Calendário Branco, Luminoso e de Alto Contraste */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1) brightness(1.3) contrast(1.15);
+  cursor: pointer;
+  opacity: 1;
+  background-color: rgba(255, 255, 255, 0.22);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  padding: 5px 6px;
+  border-radius: 6px;
+  margin-left: 6px;
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.3);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator:hover {
+  background-color: rgba(255, 255, 255, 0.4);
+  border-color: #ffffff;
+  filter: invert(1) brightness(1.6) drop-shadow(0 0 10px rgba(255, 255, 255, 1));
+  transform: scale(1.14);
+  box-shadow: 0 0 14px rgba(255, 255, 255, 0.6);
 }
 
 .divider {
@@ -637,9 +743,108 @@ body {
   letter-spacing: -0.02em;
 }
 
-.kpi-sub {
+/* ==========================================================================
+   CARD DE COMPARAÇÃO COM DATA FINAL (DATE PICKER)
+   ========================================================================== */
+.target-comparison-box {
+  background: linear-gradient(135deg, rgba(30, 45, 78, 0.95) 0%, rgba(15, 23, 42, 0.95) 100%);
+  border: 1.5px solid rgba(56, 189, 248, 0.45);
+  border-radius: 14px;
+  padding: 16px 20px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35), 0 0 15px rgba(56, 189, 248, 0.15);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: var(--transition-normal);
+}
+
+.target-comparison-box:hover {
+  border-color: rgba(56, 189, 248, 0.7);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45), 0 0 20px rgba(56, 189, 248, 0.25);
+}
+
+.comparison-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 10px;
+}
+
+.comparison-title-badge {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.comparison-title-badge h4 {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0;
+}
+
+.comparison-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+}
+
+.comp-col {
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.comp-label {
   font-size: 0.72rem;
-  color: var(--text-muted);
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #94a3b8;
+  letter-spacing: 0.04em;
+}
+
+.comp-value {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.comparison-footer {
+  font-size: 0.78rem;
+  color: #cbd5e1;
+}
+
+.comp-msg {
+  font-size: 0.78rem;
+  color: #94a3b8;
+}
+
+/* Linha destacada na tabela de previsão */
+.row-target-highlight {
+  background: rgba(56, 189, 248, 0.12) !important;
+  font-weight: 700;
+}
+
+.row-target-highlight td {
+  border-top: 1.5px solid rgba(56, 189, 248, 0.4) !important;
+  border-bottom: 1.5px solid rgba(56, 189, 248, 0.4) !important;
+  color: #ffffff !important;
+}
+
+.badge-target-tag {
+  background: rgba(56, 189, 248, 0.2);
+  color: #38bdf8;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-left: 6px;
+  border: 1px solid rgba(56, 189, 248, 0.4);
 }
 
 /* ==========================================================================
