@@ -233,14 +233,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const fields = [];
 
-    const todayStr = new Date().toISOString().split('T')[0];
+    // Obtém a data de ontem no fuso local do navegador
+    const dYesterday = new Date();
+    dYesterday.setDate(dYesterday.getDate() - 1);
+    const yesterdayStr = `${dYesterday.getFullYear()}-${String(dYesterday.getMonth() + 1).padStart(2, '0')}-${String(dYesterday.getDate()).padStart(2, '0')}`;
+
     const histEndVal = elements.inputEndDate ? elements.inputEndDate.value : '2025-12-31';
     let minTargetDate = '2026-01-01';
     try {
       if (histEndVal) {
         const dEnd = new Date(histEndVal + 'T00:00:00');
         dEnd.setDate(dEnd.getDate() + 1);
-        minTargetDate = dEnd.toISOString().split('T')[0];
+        minTargetDate = `${dEnd.getFullYear()}-${String(dEnd.getMonth() + 1).padStart(2, '0')}-${String(dEnd.getDate()).padStart(2, '0')}`;
       }
     } catch (e) {
       minTargetDate = '2026-01-01';
@@ -259,13 +263,13 @@ document.addEventListener('DOMContentLoaded', () => {
       hint: 'Inicia 1 dia após o término do histórico'
     });
 
-    // 2. Data Final da Projeção (Date Picker interativo, default: hoje)
+    // 2. Data Final da Projeção (default: ontem)
     fields.push({
       id: 'param-forecast-target-date',
       name: 'forecast_target_date',
-      label: '📅 Data Final da Projeção (Date Picker)',
+      label: '📅 Data Final da Projeção',
       type: 'date',
-      val: todayStr,
+      val: yesterdayStr >= minTargetDate ? yesterdayStr : minTargetDate,
       min: minTargetDate,
       hint: 'Data final até onde a IA calcula a projeção futura'
     });
