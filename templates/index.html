@@ -291,36 +291,41 @@
         </div>
       </div>
 
-      <!-- Card de Comparação Real vs. Previsão na Data Final (Date Picker) -->
+      <!-- Card de Comparação Real vs. Previsão na Data Atual -->
       <div id="target-comparison-card" class="target-comparison-box hidden">
         <div class="comparison-header">
           <div class="comparison-title-badge">
             <span class="icon-spark">🎯</span>
-            <h4>Comparação na Data Final (Date Picker)</h4>
-            <span id="target-date-badge" class="badge-tag">Data Alvo: --/--/----</span>
+            <h4>Comparação com o Valor Real na Data Atual</h4>
+            <span id="target-date-badge" class="badge-tag">Data Atual (Hoje): --/--/----</span>
+            <span id="forecast-target-badge" class="badge-mini" style="background: rgba(56, 189, 248, 0.2); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.4);">Projeção até: --/--/----</span>
           </div>
           <span id="target-status-tag" class="kpi-badge badge-neutral">Aguardando</span>
         </div>
         <div class="comparison-grid">
           <div class="comp-col">
-            <span class="comp-label">Preço Previsto (IA)</span>
+            <span class="comp-label">Preço Previsto IA (Hoje)</span>
             <span id="comp-projected-val" class="comp-value font-mono">--</span>
+            <span id="comp-projected-sub" class="comp-sub">Previsão IA para a Data Atual</span>
           </div>
           <div class="comp-col">
-            <span class="comp-label">Preço Real de Mercado</span>
+            <span class="comp-label">Preço Real Mercado (Hoje)</span>
             <span id="comp-real-val" class="comp-value font-mono">--</span>
+            <span id="comp-real-sub" class="comp-sub">Cotação Real na Data Atual</span>
           </div>
           <div class="comp-col">
-            <span class="comp-label">Diferença (Desvio)</span>
+            <span class="comp-label">Diferença (Desvio Hoje)</span>
             <span id="comp-diff-val" class="comp-value font-mono">--</span>
+            <span id="comp-diff-sub" class="comp-sub">Desvio Real vs. IA na Data Atual</span>
           </div>
           <div class="comp-col">
-            <span class="comp-label">Acurácia na Data Final</span>
+            <span class="comp-label">Acurácia na Data Atual</span>
             <span id="comp-accuracy-val" class="comp-value font-mono">--</span>
+            <span id="comp-accuracy-sub" class="comp-sub">Assertividade do Modelo Hoje</span>
           </div>
         </div>
         <div class="comparison-footer">
-          <span id="comp-message" class="comp-msg">Análise de aderência entre previsão da IA e cotação real do mercado.</span>
+          <span id="comp-message" class="comp-msg">Análise de aderência entre previsão da IA e cotação real do mercado na data atual.</span>
         </div>
       </div>
 

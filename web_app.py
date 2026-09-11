@@ -144,17 +144,35 @@ def _extrair_parametros_requisicao(dados: Dict[str, Any]) -> Dict[str, Any]:
     if identificador_algoritmo not in CATALOGO_ALGORITMOS:
         identificador_algoritmo = "algoritmo_genetico"
 
+    data_alvo_projecao = dados.get("forecast_target_date", dados.get("data_alvo_projecao", dados.get("data_fim_projecao", dados.get("target_date", "")))).strip() or None
+
     eh_cripto = ("BTC" in ticker) or ("ETH" in ticker) or ("-USD" in ticker and "USDBRL" not in ticker)
     val_horiz = dados.get("horizon_value", dados.get("horizonte_valor"))
     unit_horiz = dados.get("horizon_unit", dados.get("horizonte_unidade", "dias"))
-    if val_horiz is not None:
+
+    if data_alvo_projecao:
+        dt_fim_ref = data_fim or dados.get("end_date") or "2025-12-31"
+        try:
+            dt_inicio_proj = pd.to_datetime(dt_fim_ref) + pd.Timedelta(days=1)
+            dt_fim_proj = pd.to_datetime(data_alvo_projecao)
+            if dt_fim_proj >= dt_inicio_proj:
+                if eh_cripto:
+                    horizonte = max(1, (dt_fim_proj - dt_inicio_proj).days + 1)
+                else:
+                    dias_uteis = pd.date_range(start=dt_inicio_proj, end=dt_fim_proj, freq="B")
+                    horizonte = max(1, len(dias_uteis))
+            else:
+                horizonte = int(dados.get("forecast_horizon", dados.get("horizonte_projecao", dados.get("horizonte", 5))))
+        except Exception:
+            horizonte = int(dados.get("forecast_horizon", dados.get("horizonte_projecao", dados.get("horizonte", 5))))
+    elif val_horiz is not None:
         try:
             h_obj = NormalizadorHorizonte.normalizar(int(val_horiz), str(unit_horiz), eh_criptomoeda=eh_cripto)
             horizonte = h_obj.periodos_normalizados
         except Exception:
-            horizonte = int(dados.get("forecast_horizon", dados.get("horizonte_projecao", 5)))
+            horizonte = int(dados.get("forecast_horizon", dados.get("horizonte_projecao", dados.get("horizonte", 5))))
     else:
-        horizonte = int(dados.get("forecast_horizon", dados.get("horizonte_projecao", 5)))
+        horizonte = int(dados.get("forecast_horizon", dados.get("horizonte_projecao", dados.get("horizonte", 5))))
 
     # Extrai hiperparâmetros específicos
     hiperparametros: Dict[str, Any] = {}
@@ -180,8 +198,6 @@ def _extrair_parametros_requisicao(dados: Dict[str, Any]) -> Dict[str, Any]:
     if "mutation_rate" in dados and "taxa_mutacao" not in hiperparametros:
         mut_val = float(dados["mutation_rate"])
         hiperparametros["taxa_mutacao"] = mut_val / 100.0 if mut_val > 1.0 else mut_val
-
-    data_alvo_projecao = dados.get("data_alvo_projecao", dados.get("data_fim_projecao", dados.get("target_date", ""))).strip() or None
 
     taxa_mut_val = float(hiperparametros.get("taxa_mutacao", 0.1))
     pop_size_val = int(hiperparametros.get("tamanho_populacao", 50))
@@ -246,6 +262,23 @@ def _executar_pipeline_modelo(parametros: Dict[str, Any], callback_progresso=Non
 
     if len(dados_brutos) < 25:
         raise ValueError(f"Série temporal insuficiente ({len(dados_brutos)} registros). Escolha um período maior.")
+
+    eh_criptomoeda = ("BTC" in ticker) or ("ETH" in ticker) or ("-USD" in ticker and "USDBRL" not in ticker)
+
+    # Recalcula horizonte se data_alvo_projecao foi especificada para cobrir até a data final
+    if data_alvo_projecao:
+        try:
+            dt_inicio_calc = pd.to_datetime(dados_brutos.index.max()) + pd.Timedelta(days=1)
+            dt_fim_calc = pd.to_datetime(data_alvo_projecao)
+            if dt_fim_calc >= dt_inicio_calc:
+                if eh_criptomoeda:
+                    horizonte = max(1, (dt_fim_calc - dt_inicio_calc).days + 1)
+                else:
+                    dias_uteis_calc = pd.date_range(start=dt_inicio_calc, end=dt_fim_calc, freq="B")
+                    horizonte = max(1, len(dias_uteis_calc))
+                parametros["horizonte"] = horizonte
+        except Exception as e_h_pipe:
+            logger.warning(f"Erro ao recalcular horizonte dinâmico para data alvo {data_alvo_projecao}: {e_h_pipe}")
 
     if callback_progresso:
         callback_progresso(15, 100, f"{len(dados_brutos)} registros carregados. Inicializando {algoritmo_id}...", 0.0)
@@ -372,43 +405,71 @@ def _executar_pipeline_modelo(parametros: Dict[str, Any], callback_progresso=Non
             "error_pct": erro_pct
         })
 
-    # Análise de comparação na Data Final (Date Picker)
+    # Análise de comparação na Data Atual (Hoje) e Projeção até a Data Final
     if pontos_projecao:
+        data_hoje_str = pd.Timestamp.now().strftime("%Y-%m-%d")
         ultimo_ponto = pontos_projecao[-1]
         data_final_str = data_alvo_projecao or ultimo_ponto["date"]
-        ponto_alvo = next((p for p in pontos_projecao if p["date"] == data_final_str), ultimo_ponto)
 
-        if ponto_alvo.get("real") is not None:
-            p_proj = ponto_alvo["projected"]
-            p_real = ponto_alvo["real"]
+        ponto_final = next((p for p in pontos_projecao if p["date"] == data_final_str), ultimo_ponto)
+
+        # Localiza o ponto correspondente à Data Atual (Hoje) ou o ponto real mais recente até hoje
+        ponto_hoje = next((p for p in pontos_projecao if p["date"] == data_hoje_str), None)
+        if ponto_hoje is None:
+            pontos_com_real = [p for p in pontos_projecao if p.get("real") is not None and p["date"] <= data_hoje_str]
+            if pontos_com_real:
+                ponto_hoje = pontos_com_real[-1]
+
+        # Prioriza o ponto da Data Atual (Hoje) para a comparação com o mercado real
+        ponto_comparacao = ponto_hoje if (ponto_hoje and ponto_hoje.get("real") is not None) else (
+            ponto_final if (ponto_final and ponto_final.get("real") is not None) else None
+        )
+
+        if ponto_comparacao and ponto_comparacao.get("real") is not None:
+            p_proj = ponto_comparacao["projected"]
+            p_real = ponto_comparacao["real"]
             diff_abs = p_proj - p_real
             diff_pct = ((p_proj - p_real) / p_real) * 100.0
             ultimo_real = float(metricas["ultimo_preco_real"])
             direcao_real = p_real >= ultimo_real
             direcao_proj = p_proj >= ultimo_real
+            p_proj_final_val = ponto_final["projected"] if ponto_final else p_proj
 
             comparacao_data_final = {
                 "tem_valor_real": True,
-                "data_alvo": ponto_alvo["date"],
+                "data_comparada": ponto_comparacao["date"],
+                "data_hoje": ponto_comparacao["date"],
+                "data_alvo": ponto_final["date"] if ponto_final else data_final_str,
+                "data_final_projecao": ponto_final["date"] if ponto_final else data_final_str,
                 "preco_projetado": p_proj,
+                "preco_projetado_hoje": p_proj,
                 "preco_real": p_real,
+                "preco_real_hoje": p_real,
+                "preco_projetado_final": p_proj_final_val,
                 "diferenca_absoluta": diff_abs,
                 "diferenca_pct": diff_pct,
                 "acuracia_pct": max(0.0, 100.0 - abs(diff_pct)),
                 "acertou_direcao": (direcao_real == direcao_proj),
-                "mensagem": f"Cotação real em {ponto_alvo['date']}: {moeda} {p_real:.2f} (Desvio IA: {diff_pct:+.2f}%)"
+                "mensagem": f"Cotação real na Data Atual ({ponto_comparacao['date']}): {moeda} {p_real:,.2f} | Previsão IA Hoje: {moeda} {p_proj:,.2f} (Desvio: {diff_pct:+.2f}%) | Projeção até {ponto_final['date'] if ponto_final else data_final_str}: {moeda} {p_proj_final_val:,.2f}"
             }
         else:
+            p_proj_final_val = ponto_final["projected"] if ponto_final else (ultimo_ponto["projected"] if ultimo_ponto else 0.0)
             comparacao_data_final = {
                 "tem_valor_real": False,
-                "data_alvo": ponto_alvo["date"],
-                "preco_projetado": ponto_alvo["projected"],
+                "data_comparada": data_hoje_str,
+                "data_hoje": data_hoje_str,
+                "data_alvo": ponto_final["date"] if ponto_final else data_final_str,
+                "data_final_projecao": ponto_final["date"] if ponto_final else data_final_str,
+                "preco_projetado": p_proj_final_val,
+                "preco_projetado_hoje": None,
                 "preco_real": None,
+                "preco_real_hoje": None,
+                "preco_projetado_final": p_proj_final_val,
                 "diferenca_absoluta": None,
                 "diferenca_pct": None,
                 "acuracia_pct": None,
                 "acertou_direcao": None,
-                "mensagem": f"Data futura em aberto: Projeção estimada em {moeda} {ponto_alvo['projected']:.2f} para {ponto_alvo['date']}."
+                "mensagem": f"Data futura em aberto: Projeção estimada em {moeda} {p_proj_final_val:,.2f} para {ponto_final['date'] if ponto_final else data_final_str}."
             }
 
     historico_aprendizado = resultados.get("ga_history", {})

@@ -64,14 +64,19 @@ document.addEventListener('DOMContentLoaded', () => {
     kpiHorizonLabel: document.getElementById('kpi-horizon-label'),
     kpiAlgoBadge: document.getElementById('kpi-algo-badge'),
 
-    // Card de Comparação Data Final
+    // Card de Comparação Data Final / Data Atual
     targetComparisonCard: document.getElementById('target-comparison-card'),
     targetDateBadge: document.getElementById('target-date-badge'),
+    forecastTargetBadge: document.getElementById('forecast-target-badge'),
     targetStatusTag: document.getElementById('target-status-tag'),
     compProjectedVal: document.getElementById('comp-projected-val'),
+    compProjectedSub: document.getElementById('comp-projected-sub'),
     compRealVal: document.getElementById('comp-real-val'),
+    compRealSub: document.getElementById('comp-real-sub'),
     compDiffVal: document.getElementById('comp-diff-val'),
+    compDiffSub: document.getElementById('comp-diff-sub'),
     compAccuracyVal: document.getElementById('comp-accuracy-val'),
+    compAccuracySub: document.getElementById('comp-accuracy-sub'),
     compMessage: document.getElementById('comp-message'),
 
     // Canvas e Títulos dos Gráficos
@@ -258,33 +263,11 @@ document.addEventListener('DOMContentLoaded', () => {
     fields.push({
       id: 'param-forecast-target-date',
       name: 'forecast_target_date',
-      label: '📅 Data Final (Date Picker)',
+      label: '📅 Data Final da Projeção (Date Picker)',
       type: 'date',
       val: todayStr,
       min: minTargetDate,
-      hint: `Horizonte futuro até a data selecionada (Padrão: Hoje)`
-    });
-
-    // 3. Unidade da Projeção (Dias)
-    fields.push({
-      id: 'param-horizon-unit',
-      name: 'horizon_unit',
-      label: 'Unidade do Horizonte',
-      type: 'text',
-      val: 'Dias',
-      readonly: true,
-      hint: 'Unidade calibrada em dias de mercado'
-    });
-
-    // 4. Quantidade de Passos Calculada Dinamicamente
-    fields.push({
-      id: 'param-proj-steps',
-      name: 'calculated_steps_info',
-      label: '⚡ Passos Calculados (IA)',
-      type: 'text',
-      val: 'Calculando passos...',
-      readonly: true,
-      hint: 'Passos = Data Final - Data Inicial da Projeção'
+      hint: 'Data final até onde a IA calcula a projeção futura'
     });
 
     if (algoId === 'xgboost' || algoId === 'lightgbm') {
@@ -928,7 +911,6 @@ document.addEventListener('DOMContentLoaded', () => {
   function updateHorizonDateLimits() {
     const targetDateInput = document.getElementById('param-forecast-target-date');
     const startProjInput = document.getElementById('param-proj-start');
-    const stepsInput = document.getElementById('param-proj-steps');
     const endDateVal = elements.inputEndDate ? elements.inputEndDate.value : '2025-12-31';
 
     if (!endDateVal) return;
@@ -955,10 +937,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (targetVal && targetVal <= endDateVal) {
           // Bloqueio / Alerta: Data final menor ou igual à data de término do histórico
-          if (stepsInput) {
-            stepsInput.value = '⚠️ Data Inválida (<= Fim)';
-            stepsInput.style.color = '#f43f5e';
-          }
           if (hintEl) {
             hintEl.innerHTML = `<span style="color:#f43f5e; font-weight:600;">⚠️ Selecione data posterior ao histórico (${endDateVal.split('-').reverse().join('/')})</span>`;
           }
@@ -986,12 +964,8 @@ document.addEventListener('DOMContentLoaded', () => {
             passos = Math.max(1, passos);
           }
 
-          if (stepsInput) {
-            stepsInput.value = `${passos} passos (${isCrypto ? '24/7 corridos' : 'dias úteis'})`;
-            stepsInput.style.color = '#10b981';
-          }
           if (hintEl) {
-            hintEl.textContent = `Projeção: ${minDateFormatted} até ${targetVal.split('-').reverse().join('/')} (${passos} períodos)`;
+            hintEl.textContent = `Projeção da IA até ${targetVal.split('-').reverse().join('/')} (${passos} períodos a partir de ${minDateFormatted})`;
           }
           targetDateInput.style.borderColor = 'rgba(255, 255, 255, 0.1)';
           if (elements.btnRun) {
@@ -1052,15 +1026,19 @@ document.addEventListener('DOMContentLoaded', () => {
     if (state.isRunning) return;
 
     const asset = elements.selectAsset.value;
-    const customTicker = elements.inputCustomTicker.value.trim();
+    const customTicker = elements.inputCustomTicker ? elements.inputCustomTicker.value.trim() : '';
     const period = elements.selectPeriod.value;
-    const startDate = elements.inputStartDate.value;
-    const endDate = elements.inputEndDate.value;
+    const startDate = elements.inputStartDate ? elements.inputStartDate.value : '';
+    const endDate = elements.inputEndDate ? elements.inputEndDate.value : '';
     const algo = elements.selectAlgorithm.value;
 
+    if (!asset) {
+      showToast('Selecione um ativo para continuar.', 'warning');
+      return;
+    }
+
     if (asset === 'Personalizado' && !customTicker) {
-      showToast('Por favor, informe o Ticker Yahoo Finance.', 'error');
-      elements.inputCustomTicker.focus();
+      showToast('Informe o código do Ticker personalizado.', 'warning');
       return;
     }
 
@@ -1087,8 +1065,35 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
       payload.forecast_target_date = targetDateInp.value;
+      payload.data_alvo_projecao = targetDateInp.value;
       payload.horizonte_dinamico = true;
       payload.horizon_unit = 'dias';
+
+      // Calcula os passos de projeção até a data final selecionada
+      const histEndRef = endDate || '2025-12-31';
+      const dEnd = new Date(histEndRef + 'T00:00:00');
+      dEnd.setDate(dEnd.getDate() + 1);
+      const isCrypto = asset.includes('BTC') || asset.includes('Bitcoin') || asset.includes('Ethereum') || customTicker.includes('BTC') || customTicker.includes('ETH') || (customTicker.includes('-USD') && !customTicker.includes('USDBRL'));
+      let passos = 0;
+      if (isCrypto) {
+        const dTarget = new Date(targetDateInp.value + 'T00:00:00');
+        const diffTime = Math.abs(dTarget - dEnd);
+        passos = Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1);
+      } else {
+        let cur = new Date(dEnd);
+        cur.setDate(cur.getDate() - 1);
+        const dTarget = new Date(targetDateInp.value + 'T00:00:00');
+        while (cur < dTarget) {
+          cur.setDate(cur.getDate() + 1);
+          const day = cur.getDay();
+          if (day !== 0 && day !== 6) passos++;
+        }
+        passos = Math.max(1, passos);
+      }
+      payload.forecast_horizon = passos;
+      payload.horizonte = passos;
+      payload.horizonte_projecao = passos;
+      payload.horizon_value = passos;
     }
 
     setRunningState(true);
@@ -1213,38 +1218,63 @@ document.addEventListener('DOMContentLoaded', () => {
     elements.kpiRmse.textContent = metrics.rmse.toFixed(4);
     elements.kpiDirectional.textContent = `${metrics.acuracia_direcional.toFixed(1)}%`;
 
-    // Atualiza Card de Comparação na Data Final (Date Picker)
+    // Atualiza Card de Comparação com Valor Real na Data Atual
     const targetComp = data.target_comparison;
     if (targetComp && elements.targetComparisonCard) {
       elements.targetComparisonCard.classList.remove('hidden');
-      const dAlvoFmt = formatDateDisplay(targetComp.data_alvo);
+      const dComparadaFmt = formatDateDisplay(targetComp.data_comparada || targetComp.data_hoje);
+      const dFinalFmt = formatDateDisplay(targetComp.data_final_projecao || targetComp.data_alvo);
+
       if (elements.targetDateBadge) {
-        elements.targetDateBadge.textContent = `Data Alvo: ${dAlvoFmt}`;
+        elements.targetDateBadge.textContent = `Data Atual (Hoje): ${dComparadaFmt}`;
+      }
+      if (elements.forecastTargetBadge) {
+        elements.forecastTargetBadge.textContent = `Projeção até: ${dFinalFmt} (Data Final)`;
       }
 
+      const pProjVal = targetComp.preco_projetado_hoje !== undefined && targetComp.preco_projetado_hoje !== null
+        ? targetComp.preco_projetado_hoje
+        : targetComp.preco_projetado;
+
       if (elements.compProjectedVal) {
-        elements.compProjectedVal.textContent = targetComp.preco_projetado !== null && targetComp.preco_projetado !== undefined
-          ? formatCurrency(targetComp.preco_projetado, state.currentCurrency)
+        elements.compProjectedVal.textContent = pProjVal !== null && pProjVal !== undefined
+          ? formatCurrency(pProjVal, state.currentCurrency)
           : '--';
+      }
+      if (elements.compProjectedSub) {
+        elements.compProjectedSub.textContent = `Previsão IA para ${dComparadaFmt} (Hoje)`;
       }
 
       if (targetComp.tem_valor_real) {
+        const pRealVal = targetComp.preco_real_hoje !== undefined && targetComp.preco_real_hoje !== null
+          ? targetComp.preco_real_hoje
+          : targetComp.preco_real;
+
         if (elements.targetStatusTag) {
           elements.targetStatusTag.className = targetComp.acertou_direcao ? 'kpi-badge badge-success' : 'kpi-badge badge-danger';
-          elements.targetStatusTag.textContent = targetComp.acertou_direcao ? 'ASSERTIVO (DIREÇÃO CORRETA)' : 'DIVERGENTE';
+          elements.targetStatusTag.textContent = targetComp.acertou_direcao ? 'ASSERTIVO (DIREÇÃO CORRETA HOJE)' : 'DIVERGENTE HOJE';
         }
         if (elements.compRealVal) {
-          elements.compRealVal.textContent = formatCurrency(targetComp.preco_real, state.currentCurrency);
+          elements.compRealVal.textContent = formatCurrency(pRealVal, state.currentCurrency);
           elements.compRealVal.style.color = '#10b981';
+        }
+        if (elements.compRealSub) {
+          elements.compRealSub.textContent = `Cotação Real em ${dComparadaFmt} (Hoje)`;
         }
         if (elements.compDiffVal) {
           const diffSign = targetComp.diferenca_pct > 0 ? '+' : '';
           elements.compDiffVal.textContent = `${diffSign}${targetComp.diferenca_pct.toFixed(2)}% (${formatCurrency(targetComp.diferenca_absoluta, state.currentCurrency)})`;
           elements.compDiffVal.style.color = Math.abs(targetComp.diferenca_pct) <= 5 ? '#10b981' : (Math.abs(targetComp.diferenca_pct) <= 15 ? '#fbbf24' : '#f43f5e');
         }
+        if (elements.compDiffSub) {
+          elements.compDiffSub.textContent = 'Desvio Real vs. IA na Data Atual';
+        }
         if (elements.compAccuracyVal) {
           elements.compAccuracyVal.textContent = `${targetComp.acuracia_pct.toFixed(2)}%`;
           elements.compAccuracyVal.style.color = targetComp.acuracia_pct >= 85 ? '#10b981' : (targetComp.acuracia_pct >= 70 ? '#38bdf8' : '#fbbf24');
+        }
+        if (elements.compAccuracySub) {
+          elements.compAccuracySub.textContent = 'Precisão do Modelo na Data Atual';
         }
       } else {
         if (elements.targetStatusTag) {
@@ -1255,13 +1285,22 @@ document.addEventListener('DOMContentLoaded', () => {
           elements.compRealVal.textContent = 'Aguardando Mercado';
           elements.compRealVal.style.color = '#94a3b8';
         }
+        if (elements.compRealSub) {
+          elements.compRealSub.textContent = `Aguardando cotação em ${dComparadaFmt}`;
+        }
         if (elements.compDiffVal) {
           elements.compDiffVal.textContent = 'Em Aberto';
           elements.compDiffVal.style.color = '#94a3b8';
         }
+        if (elements.compDiffSub) {
+          elements.compDiffSub.textContent = 'Em Aberto';
+        }
         if (elements.compAccuracyVal) {
           elements.compAccuracyVal.textContent = 'Projeção Ativa';
           elements.compAccuracyVal.style.color = '#38bdf8';
+        }
+        if (elements.compAccuracySub) {
+          elements.compAccuracySub.textContent = 'Aguardando Fechamento';
         }
       }
 
@@ -1335,7 +1374,8 @@ document.addEventListener('DOMContentLoaded', () => {
     elements.forecastTableBody.innerHTML = '';
     const forecast = data.forecast || [];
     const targetComp = data.target_comparison || {};
-    const targetDateStr = targetComp.data_alvo;
+    const dateHojeStr = targetComp.data_comparada || targetComp.data_hoje;
+    const dateFinalStr = targetComp.data_final_projecao || targetComp.data_alvo;
 
     elements.tableInfoCounter.textContent = `${forecast.length} dias projetados`;
 
@@ -1347,7 +1387,17 @@ document.addEventListener('DOMContentLoaded', () => {
     forecast.forEach(item => {
       const stepVar = ((item.projected - lastRefPrice) / (lastRefPrice + 1e-9)) * 100;
       const isUp = stepVar >= 0;
-      const isTargetRow = targetDateStr && item.date === targetDateStr;
+      const isTodayRow = dateHojeStr && item.date === dateHojeStr;
+      const isFinalRow = dateFinalStr && item.date === dateFinalStr;
+
+      let badgeTag = '';
+      if (isTodayRow && isFinalRow) {
+        badgeTag = '<span class="badge-target-tag">🎯 Data Atual & Final</span>';
+      } else if (isTodayRow) {
+        badgeTag = '<span class="badge-target-tag" style="background: rgba(16, 185, 129, 0.25); color: #34d399; border-color: rgba(16, 185, 129, 0.5);">📍 Data Atual (Hoje)</span>';
+      } else if (isFinalRow) {
+        badgeTag = '<span class="badge-target-tag">🎯 Data Final</span>';
+      }
 
       let realCellHtml = '<span class="text-muted font-mono" style="opacity: 0.6;">— (Futuro)</span>';
       let errorCellHtml = '<span class="text-muted font-mono" style="opacity: 0.6;">—</span>';
@@ -1362,14 +1412,14 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       const tr = document.createElement('tr');
-      if (isTargetRow) {
+      if (isTodayRow || isFinalRow) {
         tr.className = 'row-target-highlight';
       }
 
       tr.innerHTML = `
         <td class="font-mono">
           ${formatDateDisplay(item.date)}
-          ${isTargetRow ? '<span class="badge-target-tag">🎯 Data Alvo</span>' : ''}
+          ${badgeTag}
         </td>
         <td class="font-mono font-bold" style="color: #38bdf8;">${formatCurrency(item.projected, data.currency)}</td>
         <td>${realCellHtml}</td>
