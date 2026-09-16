@@ -147,6 +147,22 @@ class ModelPredictor:
 
         current_date = last_date
 
+        precos_historicos = np.array(df_raw["Close"].values, dtype=np.float64)
+        n_hist = len(precos_historicos)
+        ultimo_preco = float(precos_historicos[-1])
+
+        # Análise de volatilidade e gradiente macroestrutural
+        retornos_hist = np.diff(precos_historicos) / (precos_historicos[:-1] + 1e-9)
+        vol_diaria = float(np.std(retornos_hist[-min(60, len(retornos_hist)):]) if len(retornos_hist) >= 10 else 0.02)
+        vol_diaria = max(0.004, min(vol_diaria, 0.045))
+
+        desvio_ancora = float(np.std(precos_historicos[-min(30, n_hist):]) if n_hist >= 10 else ultimo_preco * 0.02)
+        desvio_ancora = max(desvio_ancora, ultimo_preco * 0.005)
+
+        ret_60d = (ultimo_preco - precos_historicos[-min(60, n_hist)]) / (precos_historicos[-min(60, n_hist)] + 1e-9)
+        ret_20d = (ultimo_preco - precos_historicos[-min(20, n_hist)]) / (precos_historicos[-min(20, n_hist)] + 1e-9)
+        tendencia_macro_diaria = float(np.clip((0.6 * ret_60d / 60.0) + (0.4 * ret_20d / 20.0), -0.004, +0.004))
+
         for step in range(1, horizon + 1):
             # Próxima data de mercado
             if is_crypto:
@@ -160,7 +176,8 @@ class ModelPredictor:
             # Extração da janela mais recente
             lags = np.array(recent_prices[-self.lookback:], dtype=np.float64)
             mean_lag = float(np.mean(lags))
-            std_lag = float(np.std(lags) if np.std(lags) > 1e-6 else 1.0)
+            std_lag_bruto = float(np.std(lags) if np.std(lags) > 1e-6 else 1.0)
+            std_lag = float(np.clip(std_lag_bruto, 0.4 * desvio_ancora, 1.6 * desvio_ancora))
             normalized_lags = (lags - mean_lag) / std_lag
 
             # Indicadores proxy recentes
@@ -174,9 +191,9 @@ class ModelPredictor:
             ema12 = recent_series.ewm(span=12).mean().iloc[-1]
             ema26 = recent_series.ewm(span=26).mean().iloc[-1]
             macd = (ema12 - ema26) / (mean_lag + 1e-9)
-            vol = float(recent_series.pct_change().std())
-            sma5 = recent_series.rolling(5).mean().iloc[-1]
-            sma20 = recent_series.rolling(20).mean().iloc[-1]
+            vol = float(recent_series.pct_change().std() or 0.01)
+            sma5 = recent_series.rolling(5).mean().iloc[-1] if len(recent_series) >= 5 else mean_lag
+            sma20 = recent_series.rolling(20).mean().iloc[-1] if len(recent_series) >= 20 else mean_lag
             sma_ratio = (sma5 / (sma20 + 1e-9)) - 1.0
 
             feat_vector = np.concatenate([
@@ -184,9 +201,23 @@ class ModelPredictor:
                 np.array([rsi, macd, vol, sma_ratio, 1.0])
             ])
 
-            # Predição normalizada e desnormalização
+            # Predição normalizada e desnormalização contida
             pred_norm = float(np.dot(feat_vector, self.individual.genes))
-            pred_real = float((pred_norm * std_lag) + mean_lag)
+            pred_norm = float(np.clip(pred_norm, -2.5, 2.5))
+            pred_raw = float((pred_norm * std_lag) + mean_lag)
+
+            # Variação diária contida com amortecimento progressivo e viés macroestrutural
+            preco_anterior = recent_prices[-1]
+            retorno_modelo = (pred_raw - preco_anterior) / (preco_anterior + 1e-9)
+            retorno_modelo = float(np.clip(retorno_modelo, -2.5 * vol_diaria, +2.5 * vol_diaria))
+
+            ret_modelo_damped = float(retorno_modelo * (0.92 ** min(step, 35)))
+            ret_macro_damped = float(tendencia_macro_diaria * (0.988 ** max(0, step - 5)))
+
+            peso_macro = float(min(0.85, 0.20 + (0.0035 * step)))
+            retorno_passo = float(((1.0 - peso_macro) * ret_modelo_damped) + (peso_macro * ret_macro_damped))
+
+            pred_real = float(max(0.01, preco_anterior * (1.0 + retorno_passo)))
 
             # Acumula na série para permitir projeção autorregressiva recursiva
             recent_prices.append(pred_real)

@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import Any, Dict, Generator, Optional
 import pandas as pd
 
-from flask import Flask, Response, jsonify, render_template, request, send_file, session
+from flask import Flask, Response, jsonify, redirect, render_template, request, send_file, session
 from flask_cors import CORS
 
 from config import (
@@ -914,8 +914,8 @@ def baixar_arquivo_relatorio(filename: str):
 
 @app.route("/portfolio-simulator")
 def pagina_simulador_investimento():
-    """Renderiza a página corporativa do Simulador de Investimentos."""
-    return render_template("simulator.html")
+    """Redireciona para o simulador multi-algoritmo integrado na página principal."""
+    return redirect("/?tab=simulator")
 
 
 @app.route("/api/simulator/run", methods=["POST"])
@@ -923,11 +923,13 @@ def iniciar_simulacao_carteira():
     """
     Inicia simulação comparativa multi-algoritmo em thread de fundo
     e acompanha o tempo real via ProgressTracker.
+    Aceita os mesmos parâmetros de período, datas customizadas e data alvo de /.
     """
     try:
         dados = request.get_json() or {}
         if not dados:
             return jsonify({"error": "Parâmetros não fornecidos."}), 400
+
         ativo = dados.get("asset", dados.get("ativo", "Petrobras (PETR4.SA)"))
         custom_ticker = dados.get("custom_ticker", "").strip().upper()
 
@@ -962,20 +964,23 @@ def iniciar_simulacao_carteira():
 
         capital = float(dados.get("capital", dados.get("capital_inicial", 10000.0)))
         aporte = float(dados.get("aporte_periodico", 0.0))
-        periodo = dados.get("period", dados.get("periodo", "1y"))
+        taxa_corretagem = float(dados.get("taxa_corretagem_pct", 0.05))
+        slippage = float(dados.get("slippage_pct", 0.02))
 
-        # Normaliza horizonte
+        periodo = dados.get("period", dados.get("periodo", "2020_2025"))
+        start_date = dados.get("start_date", dados.get("data_inicio"))
+        end_date = dados.get("end_date", dados.get("data_fim"))
+        data_alvo_projecao = dados.get("forecast_target_date", dados.get("data_alvo_projecao"))
+
+        if periodo == "2020_2025":
+            start_date = start_date or "2020-01-01"
+            end_date = end_date or "2025-12-31"
+
         h_val = int(dados.get("horizon_value", dados.get("horizonte_valor", 30)))
         h_unit = str(dados.get("horizon_unit", dados.get("horizonte_unidade", "dias")))
         eh_cripto = ("BTC" in ticker) or ("ETH" in ticker) or ("-USD" in ticker and "USDBRL" not in ticker)
 
-        horizonte_obj = NormalizadorHorizonte.normalizar(
-            valor=h_val,
-            unidade=h_unit,
-            eh_criptomoeda=eh_cripto
-        )
-
-        algoritmos_escolhidos = dados.get("algorithms", dados.get("algoritmos", ["mapp", "xgboost", "random_forest"]))
+        algoritmos_escolhidos = dados.get("algorithms", dados.get("algoritmos", list(CATALOGO_ALGORITMOS.keys())))
         params_algos = dados.get("algorithm_params", {})
 
         id_simulacao = str(uuid.uuid4())
@@ -997,16 +1002,60 @@ def iniciar_simulacao_carteira():
         def trabalhador_simulacao():
             try:
                 coletor = DataFetcher()
-                str_p = PERIOD_CHOICES.get(periodo, periodo if periodo in ["1mo", "3mo", "6mo", "1y", "2y", "5y"] else "1y")
-                df_dados = coletor.fetch_asset_data(ticker=ticker, period=str_p)
+                str_p = None if periodo in ["2020_2025", "custom"] else PERIOD_CHOICES.get(periodo, periodo)
 
-                if len(df_dados) < 30:
-                    raise ValueError(f"Série temporal insuficiente ({len(df_dados)} registros) para simulação de investimentos.")
+                df_dados = coletor.fetch_asset_data(
+                    ticker=ticker,
+                    period=str_p,
+                    start_date=start_date,
+                    end_date=end_date
+                )
+
+                if len(df_dados) < 25:
+                    raise ValueError(f"Série temporal insuficiente ({len(df_dados)} registros) para simulação.")
+
+                # Calcula passos de projeção até data alvo se fornecida
+                horizonte_passos = h_val
+                if data_alvo_projecao:
+                    try:
+                        dt_ini_p = pd.to_datetime(df_dados.index.max()) + pd.Timedelta(days=1)
+                        dt_fim_p = pd.to_datetime(data_alvo_projecao)
+                        if dt_fim_p >= dt_ini_p:
+                            if eh_cripto:
+                                horizonte_passos = max(1, (dt_fim_p - dt_ini_p).days + 1)
+                            else:
+                                dias_uteis = pd.date_range(start=dt_ini_p, end=dt_fim_p, freq="B")
+                                horizonte_passos = max(1, len(dias_uteis))
+                    except Exception as err_h:
+                        logger.warning(f"Erro calculando passos até data alvo: {err_h}")
+
+                horizonte_obj = NormalizadorHorizonte.normalizar(
+                    valor=horizonte_passos,
+                    unidade="dias" if data_alvo_projecao else h_unit,
+                    eh_criptomoeda=eh_cripto
+                )
+
+                # Busca cotações de validação até hoje/data alvo
+                df_validacao = None
+                try:
+                    dt_inicio_v = (pd.to_datetime(df_dados.index.max()) + pd.Timedelta(days=1)).strftime("%Y-%m-%d")
+                    dt_fim_v = pd.to_datetime(data_alvo_projecao or pd.Timestamp.now()).strftime("%Y-%m-%d")
+                    if pd.to_datetime(dt_inicio_v) <= pd.Timestamp.now().normalize():
+                        df_validacao = coletor.fetch_asset_data(
+                            ticker=ticker,
+                            start_date=dt_inicio_v,
+                            end_date=dt_fim_v
+                        )
+                except Exception as e_v:
+                    logger.info(f"Cotações de validação para simulação não disponíveis: {e_v}")
+                    df_validacao = None
 
                 simulador = InvestmentSimulator(
                     capital_inicial=capital,
                     aporte_periodico=aporte,
-                    moeda=moeda
+                    moeda=moeda,
+                    taxa_corretagem_pct=taxa_corretagem,
+                    slippage_pct=slippage
                 )
 
                 def callback_progresso_sim(snap: Dict[str, Any]):
@@ -1026,13 +1075,24 @@ def iniciar_simulacao_carteira():
                     algoritmos_selecionados=algoritmos_escolhidos,
                     horizonte=horizonte_obj,
                     parametros_por_algoritmo=params_algos,
-                    callback_progresso=callback_progresso_sim
+                    callback_progresso=callback_progresso_sim,
+                    df_validacao=df_validacao,
+                    data_alvo_projecao=data_alvo_projecao
                 )
+
+                dt_ini_fmt = pd.to_datetime(df_dados.index.min()).strftime("%d-%m-%Y")
+                dt_fim_fmt = pd.to_datetime(df_dados.index.max()).strftime("%d-%m-%Y")
 
                 resultado["asset_name"] = nome_ativo
                 resultado["ticker"] = ticker
                 resultado["currency"] = moeda
+                resultado["period_str"] = periodo
+                resultado["start_date"] = start_date
+                resultado["end_date"] = end_date
+                resultado["data_inicio_formatada"] = dt_ini_fmt
+                resultado["data_fim_formatada"] = dt_fim_fmt
 
+                # Armazena na memória de sessão e global para exportação
                 with TRAVA_SIMULACOES:
                     if id_simulacao in SIMULACOES_PROGRESSO:
                         SIMULACOES_PROGRESSO[id_simulacao].update({
@@ -1067,6 +1127,129 @@ def iniciar_simulacao_carteira():
         return jsonify({"success": False, "error": str(e)}), 400
 
 
+@app.route("/api/simulator/export-pdf", methods=["GET"])
+def exportar_relatorio_pdf_simulador():
+    """Exporta relatório individual em PDF para um algoritmo específico simulado."""
+    sim_id = request.args.get("sim_id") or session.get("id_simulacao_atual")
+    algo_id = request.args.get("algorithm", "mapp").lower()
+
+    with TRAVA_SIMULACOES:
+        estado = SIMULACOES_PROGRESSO.get(sim_id, {})
+        resultado = estado.get("resultado")
+
+    if not resultado:
+        return jsonify({"success": False, "error": "Simulação não encontrada ou não concluída."}), 404
+
+    raw_preds = resultado.get("raw_predictions", {})
+    pred_res = raw_preds.get(algo_id)
+    if not pred_res:
+        # Fallback para o primeiro modelo disponível
+        if raw_preds:
+            algo_id = list(raw_preds.keys())[0]
+            pred_res = raw_preds[algo_id]
+        else:
+            return jsonify({"success": False, "error": f"Dados do modelo {algo_id} não disponíveis."}), 404
+
+    nome_ativo = resultado.get("asset_name", "Ativo")
+    ticker = resultado.get("ticker", "TICKER")
+    moeda = resultado.get("currency", "BRL")
+    periodo = resultado.get("period_str", "2020_2025")
+    dt_ini_fmt = resultado.get("data_inicio_formatada", "2020")
+    dt_fim_fmt = resultado.get("data_fim_formatada", "2025")
+    nome_algo = CATALOGO_ALGORITMOS.get(algo_id, {}).get("nome", algo_id.upper())
+
+    try:
+        nome_arquivo = f"{ticker.replace('.', '_')}_{algo_id}_{dt_ini_fmt}_a_{dt_fim_fmt}.pdf"
+        caminho_pdf_custom = str(REPORTS_DIR / nome_arquivo)
+
+        caminhos_graficos = GeradorRelatorioPDF.exportar_graficos_analiticos(
+            resultados_predicao=pred_res,
+            historico_treinamento=pred_res.get("ga_history", {}),
+            nome_ativo=nome_ativo,
+            moeda=moeda
+        )
+
+        caminho_pdf = GeradorRelatorioPDF.gerar_relatorio_pdf(
+            nome_ativo=nome_ativo,
+            ticker=ticker,
+            moeda=moeda,
+            nome_algoritmo=nome_algo,
+            periodo_escolhido=periodo,
+            parametros_algoritmo={},
+            resultados_predicao=pred_res,
+            historico_treinamento=pred_res.get("ga_history", {}),
+            caminhos_graficos=caminhos_graficos,
+            caminho_arquivo_saida=caminho_pdf_custom
+        )
+
+        resp = send_file(caminho_pdf, as_attachment=True, download_name=nome_arquivo, mimetype="application/pdf")
+        resp.headers["Access-Control-Expose-Headers"] = "Content-Disposition"
+        return resp
+    except Exception as e:
+        logger.error(f"Erro ao gerar PDF do simulador: {e}", exc_info=True)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/simulator/export-docx", methods=["GET"])
+def exportar_relatorio_docx_simulador():
+    """Exporta relatório individual em DOCX (Word) para um algoritmo específico simulado."""
+    sim_id = request.args.get("sim_id") or session.get("id_simulacao_atual")
+    algo_id = request.args.get("algorithm", "mapp").lower()
+
+    with TRAVA_SIMULACOES:
+        estado = SIMULACOES_PROGRESSO.get(sim_id, {})
+        resultado = estado.get("resultado")
+
+    if not resultado:
+        return jsonify({"success": False, "error": "Simulação não encontrada ou não concluída."}), 404
+
+    raw_preds = resultado.get("raw_predictions", {})
+    pred_res = raw_preds.get(algo_id)
+    if not pred_res:
+        if raw_preds:
+            algo_id = list(raw_preds.keys())[0]
+            pred_res = raw_preds[algo_id]
+        else:
+            return jsonify({"success": False, "error": f"Dados do modelo {algo_id} não disponíveis."}), 404
+
+    nome_ativo = resultado.get("asset_name", "Ativo")
+    ticker = resultado.get("ticker", "TICKER")
+    moeda = resultado.get("currency", "BRL")
+    periodo = resultado.get("period_str", "2020_2025")
+    dt_ini_fmt = resultado.get("data_inicio_formatada", "2020")
+    dt_fim_fmt = resultado.get("data_fim_formatada", "2025")
+
+    try:
+        nome_arquivo = f"{ticker.replace('.', '_')}_{algo_id}_{dt_ini_fmt}_a_{dt_fim_fmt}.docx"
+        caminho_docx_custom = str(REPORTS_DIR / nome_arquivo)
+
+        charts = ReportGenerator.export_charts_for_report(
+            prediction_results=pred_res,
+            ga_history={"generation": [1, 2], "best_fitness": [1, 2], "avg_fitness": [1, 2]},
+            asset_name=nome_ativo,
+            currency=moeda
+        )
+
+        doc_path = ReportGenerator.generate_docx_report(
+            asset_name=nome_ativo,
+            ticker=ticker,
+            currency=moeda,
+            period_str=periodo,
+            ga_config=DEFAULT_GA_CONFIG,
+            prediction_results=pred_res,
+            ga_history={"generation": [1, 2], "best_fitness": [1, 2], "avg_fitness": [1, 2]},
+            chart_paths=charts,
+            output_filepath=caminho_docx_custom
+        )
+
+        resp = send_file(doc_path, as_attachment=True, download_name=nome_arquivo, mimetype="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+        resp.headers["Access-Control-Expose-Headers"] = "Content-Disposition"
+        return resp
+    except Exception as e:
+        logger.error(f"Erro ao gerar DOCX do simulador: {e}", exc_info=True)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
 @app.route("/api/simulator/progress", methods=["GET"])
 def obter_progresso_simulacao():
     """Retorna o estado em tempo real com cronômetro decorrido e estimado."""
@@ -1078,7 +1261,13 @@ def obter_progresso_simulacao():
         estado = SIMULACOES_PROGRESSO.get(id_sim)
         if not estado:
             return jsonify({"concluido": False, "erro": "Identificador de simulação expirado ou inexistente."}), 404
-        return jsonify(estado)
+        
+        estado_json = dict(estado)
+        if "resultado" in estado_json and isinstance(estado_json["resultado"], dict):
+            res_dict = dict(estado_json["resultado"])
+            res_dict.pop("raw_predictions", None)
+            estado_json["resultado"] = res_dict
+        return jsonify(estado_json)
 
 
 @app.route("/api/optimize", methods=["POST"])

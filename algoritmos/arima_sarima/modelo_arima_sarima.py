@@ -95,8 +95,27 @@ class ModeloARIMA(BaseAlgoritmo):
 
         # 4. Projeção futura analítica com intervalo de confiança de 95%
         previsao_objeto = self.modelo_ajustado.get_forecast(steps=horizonte_projecao)
-        previsoes_futuras = list(previsao_objeto.predicted_mean)
+        previsoes_futuras_raw = list(previsao_objeto.predicted_mean)
         intervalos_confianca = previsao_objeto.conf_int(alpha=0.05)
+
+        # Alinhamento com a inclinação macroestrutural para horizontes médios e longos
+        ultimo_preco_arima = float(valores_reais[-1])
+        n_vals = len(valores_reais)
+        ret_60d = (ultimo_preco_arima - valores_reais[-min(60, n_vals)]) / (valores_reais[-min(60, n_vals)] + 1e-9)
+        ret_20d = (ultimo_preco_arima - valores_reais[-min(20, n_vals)]) / (valores_reais[-min(20, n_vals)] + 1e-9)
+        tendencia_macro = float(np.clip((0.6 * ret_60d / 60.0) + (0.4 * ret_20d / 20.0), -0.004, +0.004))
+
+        previsoes_futuras = []
+        preco_passo_arima = ultimo_preco_arima
+        for passo, p_arima in enumerate(previsoes_futuras_raw, start=1):
+            p_ant = previsoes_futuras_raw[passo - 2] if passo > 1 else ultimo_preco_arima
+            ret_arima = (p_arima - p_ant) / (p_ant + 1e-9)
+            ret_arima_damped = float(ret_arima * (0.92 ** min(passo, 35)))
+            ret_macro = float(tendencia_macro * (0.988 ** max(0, passo - 5)))
+            peso_macro = float(min(0.85, 0.20 + (0.0035 * passo)))
+            ret_passo = float(((1.0 - peso_macro) * ret_arima_damped) + (peso_macro * ret_macro))
+            preco_passo_arima = float(max(0.01, preco_passo_arima * (1.0 + ret_passo)))
+            previsoes_futuras.append(preco_passo_arima)
 
         limites_inferiores = [max(0.0, float(intervalos_confianca[i, 0])) for i in range(horizonte_projecao)]
         limites_superiores = [float(intervalos_confianca[i, 1]) for i in range(horizonte_projecao)]

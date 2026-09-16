@@ -240,6 +240,24 @@ class BaseAlgoritmo(ABC):
         Realiza a projeção recursiva dia a dia calculando indicadores técnicos dinamicamente
         e expandindo o cone de incerteza de 95%.
         """
+        precos_historicos = np.array(dados_completos["Close"].values, dtype=np.float64)
+        n_hist = len(precos_historicos)
+        ultimo_preco = float(precos_historicos[-1])
+
+        # 1. Análise de volatilidade e gradiente macro
+        retornos_hist = np.diff(precos_historicos) / (precos_historicos[:-1] + 1e-9)
+        vol_diaria = float(np.std(retornos_hist[-min(60, len(retornos_hist)):]) if len(retornos_hist) >= 10 else 0.02)
+        vol_diaria = max(0.004, min(vol_diaria, 0.045))
+
+        # Desvio padrão âncora baseado nos dados reais históricos (não permitindo inflar artificialmente)
+        desvio_ancora = float(np.std(precos_historicos[-min(30, n_hist):]) if n_hist >= 10 else ultimo_preco * 0.02)
+        desvio_ancora = max(desvio_ancora, ultimo_preco * 0.005)
+
+        # Gradiente macroestrutural (médias de 20, 50 e 200 períodos)
+        ret_60d = (ultimo_preco - precos_historicos[-min(60, n_hist)]) / (precos_historicos[-min(60, n_hist)] + 1e-9)
+        ret_20d = (ultimo_preco - precos_historicos[-min(20, n_hist)]) / (precos_historicos[-min(20, n_hist)] + 1e-9)
+        tendencia_macro_diaria = float(np.clip((0.6 * ret_60d / 60.0) + (0.4 * ret_20d / 20.0), -0.004, +0.004))
+
         precos_recentes = list(dados_completos["Close"].values)
         datas_futuras: List[pd.Timestamp] = []
         previsoes_futuras: List[float] = []
@@ -257,7 +275,10 @@ class BaseAlgoritmo(ABC):
 
             janela_lags = np.array(precos_recentes[-self.janela_temporal:], dtype=np.float64)
             media_lag = float(np.mean(janela_lags))
-            desvio_lag = float(np.std(janela_lags) if np.std(janela_lags) > 1e-6 else 1.0)
+
+            # Ancoragem do desvio padrão para evitar runaway exponencial
+            desvio_lag_bruto = float(np.std(janela_lags) if np.std(janela_lags) > 1e-6 else 1.0)
+            desvio_lag = float(np.clip(desvio_lag_bruto, 0.4 * desvio_ancora, 1.6 * desvio_ancora))
             lags_normalizados = (janela_lags - media_lag) / desvio_lag
 
             serie_recente = pd.Series(precos_recentes[-30:])
@@ -281,7 +302,28 @@ class BaseAlgoritmo(ABC):
             ]).reshape(1, -1)
 
             pred_norm = float(funcao_predicao_vetor(vetor_caracteristicas))
-            pred_real = float((pred_norm * desvio_lag) + media_lag)
+            pred_norm = float(np.clip(pred_norm, -2.5, 2.5))
+            pred_raw = float((pred_norm * desvio_lag) + media_lag)
+
+            # Variação percentual diária controlada
+            preco_anterior = precos_recentes[-1]
+            retorno_modelo = (pred_raw - preco_anterior) / (preco_anterior + 1e-9)
+            retorno_modelo = float(np.clip(retorno_modelo, -2.5 * vol_diaria, +2.5 * vol_diaria))
+
+            # Amortecimento exponencial progressivo do sinal autorregressivo local
+            ret_modelo_damped = float(retorno_modelo * (0.92 ** min(passo, 35)))
+
+            # Tendência macroestrutural amortecida suavemente ao longo do horizonte
+            fator_amort_macro = float(0.988 ** max(0, passo - 5))
+            ret_macro_damped = float(tendencia_macro_diaria * fator_amort_macro)
+
+            # Ponderação progressiva: no curto prazo o modelo local responde por maior peso;
+            # com o avanço do horizonte, o regime macro assume a trajetória secular
+            peso_macro = float(min(0.85, 0.20 + (0.0035 * passo)))
+            retorno_passo = float(((1.0 - peso_macro) * ret_modelo_damped) + (peso_macro * ret_macro_damped))
+
+            pred_real = float(max(0.01, preco_anterior * (1.0 + retorno_passo)))
+
             precos_recentes.append(pred_real)
             previsoes_futuras.append(pred_real)
 

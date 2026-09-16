@@ -134,21 +134,29 @@ class ModeloMAPP(BaseAlgoritmo):
         # Projeta dia a dia recursivamente
         retorno_prev_1 = float(0.5 * modelo_ridge.predict(ultimo_vetor_feat)[0] + 0.5 * modelo_gb.predict(ultimo_vetor_feat)[0])
 
+        # Análise macroestrutural para regime de médio e longo prazo
+        ret_60d = (close[-1] - close[-min(60, n)]) / (close[-min(60, n)] + 1e-9)
+        ret_20d = (close[-1] - close[-min(20, n)]) / (close[-min(20, n)] + 1e-9)
+        tendencia_macro = float(np.clip((0.6 * ret_60d / 60.0) + (0.4 * ret_20d / 20.0), -0.003, +0.003))
+
         # Ajusta pelo viés do regime de mercado
-        fator_regime = 0.0
         if resultado_regime.regime_primario == TipoRegimeMercado.BULL_TREND:
-            fator_regime = 0.003
+            fator_regime = 0.002
         elif resultado_regime.regime_primario == TipoRegimeMercado.BEAR_TREND:
-            fator_regime = -0.003
+            fator_regime = -0.0025
         elif resultado_regime.regime_primario == TipoRegimeMercado.CRASH:
-            fator_regime = -0.008
+            fator_regime = -0.006
         elif resultado_regime.regime_primario == TipoRegimeMercado.RECOVERY:
-            fator_regime = 0.005
+            fator_regime = 0.003
+        else:
+            # Em consolidação ou lateralização, segue a inclinação macroestrutural
+            fator_regime = tendencia_macro
 
         preco_corrente = preco_base
 
         for step in range(1, horizonte_projecao + 1):
-            ret_passo = retorno_prev_1 * (0.95 ** (step - 1)) + fator_regime
+            fator_regime_step = float(fator_regime * (0.988 ** max(0, step - 5)))
+            ret_passo = float((retorno_prev_1 * (0.92 ** (step - 1))) + fator_regime_step)
             preco_corrente = max(0.01, preco_corrente * (1.0 + ret_passo))
             projecao_precos.append(preco_corrente)
 

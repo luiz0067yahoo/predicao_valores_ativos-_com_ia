@@ -110,9 +110,27 @@ class ModeloProphet(BaseAlgoritmo):
         precos_reais = df_prophet["y"].values
         precos_previstos_in_sample = previsoes_prophet["yhat"].iloc[:tamanho_historico].values
 
-        precos_projetados = list(previsoes_prophet["yhat"].iloc[tamanho_historico:].values)
+        precos_projetados_raw = list(previsoes_prophet["yhat"].iloc[tamanho_historico:].values)
         limites_inferiores = list(previsoes_prophet["yhat_lower"].iloc[tamanho_historico:].values)
         limites_superiores = list(previsoes_prophet["yhat_upper"].iloc[tamanho_historico:].values)
+
+        # Suavização com amortecimento de momentum para horizontes de médio e longo prazo
+        preco_base_prophet = float(precos_reais[-1])
+        ret_60d = (preco_base_prophet - precos_reais[-min(60, len(precos_reais))]) / (precos_reais[-min(60, len(precos_reais))] + 1e-9)
+        ret_20d = (preco_base_prophet - precos_reais[-min(20, len(precos_reais))]) / (precos_reais[-min(20, len(precos_reais))] + 1e-9)
+        tendencia_macro = float(np.clip((0.6 * ret_60d / 60.0) + (0.4 * ret_20d / 20.0), -0.004, +0.004))
+
+        precos_projetados = []
+        preco_passo_prophet = preco_base_prophet
+        for passo, p_proj in enumerate(precos_projetados_raw, start=1):
+            p_ant = precos_projetados_raw[passo - 2] if passo > 1 else preco_base_prophet
+            ret_prophet = (p_proj - p_ant) / (p_ant + 1e-9)
+            ret_prophet_damped = float(ret_prophet * (0.92 ** min(passo, 35)))
+            ret_macro = float(tendencia_macro * (0.988 ** max(0, passo - 5)))
+            peso_macro = float(min(0.85, 0.20 + (0.0035 * passo)))
+            ret_passo = float(((1.0 - peso_macro) * ret_prophet_damped) + (peso_macro * ret_macro))
+            preco_passo_prophet = float(max(0.01, preco_passo_prophet * (1.0 + ret_passo)))
+            precos_projetados.append(preco_passo_prophet)
 
         # 5. DataFrames de saída
         datas_alvo_originais = list(serie_fechamento.index)

@@ -316,6 +316,12 @@ class SimuladorMiroFish(BaseAlgoritmo):
         ultimo_preco = float(valores_reais[-1])
         projecoes_diarias: List[float] = []
 
+        # Análise macroestrutural para o enxame MiroFish
+        n_vals = len(valores_reais)
+        ret_60d = (ultimo_preco - valores_reais[-min(60, n_vals)]) / (valores_reais[-min(60, n_vals)] + 1e-9)
+        ret_20d = (ultimo_preco - valores_reais[-min(20, n_vals)]) / (valores_reais[-min(20, n_vals)] + 1e-9)
+        tendencia_macro_diaria = float(np.clip((0.6 * ret_60d / 60.0) + (0.4 * ret_20d / 20.0), -0.004, +0.004))
+
         preco_passo_atual = ultimo_preco
         recorte_atual = valores_reais[-janela:].copy()
 
@@ -344,8 +350,13 @@ class SimuladorMiroFish(BaseAlgoritmo):
                     historico_consenso.append(float(media_coletiva))
                     historico_dispersao.append(float(np.std(crencas)))
 
-            delta_consenso_pct = float(np.sum(crencas * pesos)) / horizonte_projecao
-            preco_passo_atual = preco_passo_atual * (1.0 + (delta_consenso_pct / 100.0))
+            media_consenso = float(np.sum(crencas * pesos))
+            ret_consenso = float((media_consenso / 100.0) * (0.92 ** min(passo, 30)))
+            ret_macro = float(tendencia_macro_diaria * (0.988 ** max(0, passo - 5)))
+            peso_macro = float(min(0.85, 0.20 + (0.0035 * passo)))
+            retorno_passo = float(((1.0 - peso_macro) * ret_consenso) + (peso_macro * ret_macro))
+
+            preco_passo_atual = float(max(0.01, preco_passo_atual * (1.0 + retorno_passo)))
             projecoes_diarias.append(preco_passo_atual)
 
             # Atualiza o recorte simulado para o próximo passo recursivo

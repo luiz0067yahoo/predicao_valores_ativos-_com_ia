@@ -63,11 +63,16 @@ def test_investment_simulator_run(sample_df):
 
 
 def test_simulator_web_routes(test_client):
-    # GET na página do simulador
-    resp = test_client.get('/portfolio-simulator')
-    assert resp.status_code == 200
-    assert b'Simulador de Investimento' in resp.data
-    assert b'M.A.P.P.' in resp.data
+    # GET na rota raiz com simulador integrado
+    resp_root = test_client.get('/')
+    assert resp_root.status_code == 200
+    assert b'tab-simulator' in resp_root.data
+    assert b'sim-chart-deviation-bars' in resp_root.data
+
+    # GET na rota legada redireciona para a aba integrada
+    resp_legacy = test_client.get('/portfolio-simulator')
+    assert resp_legacy.status_code == 302
+    assert '/?tab=simulator' in resp_legacy.headers.get('Location', '')
 
     # POST com parâmetros inválidos
     resp_bad = test_client.post('/api/simulator/run', json={})

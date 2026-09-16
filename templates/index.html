@@ -41,13 +41,13 @@
         <span class="pulse-dot"></span>
         <span id="connection-text">Pronto para Otimização</span>
       </div>
-      <a href="/portfolio-simulator" class="btn btn-primary" style="text-decoration: none;"
-        title="Abrir Simulador de Investimentos Multi-Algoritmo M.A.P.P.">
+      <button type="button" id="btn-nav-simulator" class="btn btn-primary"
+        title="Abrir Comparativo Geral de Todos os 16 Algoritmos e Desvio Hoje">
         <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
         </svg>
-        <span>Simulador MAPP</span>
-      </a>
+        <span>Simulador Multi-IA (16 Modelos)</span>
+      </button>
       <button id="btn-view-history" class="btn btn-glass" title="Ver Histórico de Ensaios">
         <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -350,6 +350,12 @@
             </svg>
             <span>Tabela Passo a Passo (95% IC)</span>
           </button>
+          <button class="tab-btn" data-tab="tab-simulator" id="tab-btn-simulator">
+            <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            <span>📊 Simulação Multi-IA & Desvio Hoje (16 Modelos)</span>
+          </button>
         </div>
 
         <!-- Aba 1: Gráfico Principal de Preço e Projeção -->
@@ -421,6 +427,350 @@
                 </tbody>
               </table>
             </div>
+          </div>
+        </div>
+
+        <!-- Aba 4: Simulação Multi-Algoritmo (16 IAs) e Comparativo Geral de Desvio Hoje -->
+        <div id="tab-simulator" class="tab-pane">
+          <!-- Card de Configuração e Disparo do Simulador -->
+          <div class="card chart-card" style="margin-bottom: 1.5rem; border: 1.5px solid rgba(56, 189, 248, 0.35);">
+            <div class="chart-header" style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem;">
+              <div>
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                  <h3 class="card-title" style="margin: 0; font-size: 1.35rem; color: #f8fafc;">⚡ Simulação Comparativa Multi-Algoritmo (16 Modelos)</h3>
+                  <span class="badge-tag" style="background: rgba(56, 189, 248, 0.2); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.4); font-weight: 700;">Alta Precisão</span>
+                </div>
+                <p class="card-subtitle">Executa todos os modelos sob condições idênticas do ativo e período histórico selecionados na barra lateral.</p>
+              </div>
+              <div class="algo-toolbar" style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                <button type="button" class="btn btn-sm btn-primary" id="sim-int-select-all">
+                  ⚡ Todos os 16
+                </button>
+                <button type="button" class="btn btn-sm btn-secondary" id="sim-int-select-top">
+                  ⭐ Top 5
+                </button>
+                <button type="button" class="btn btn-sm btn-glass" id="sim-int-deselect-all">
+                  Limpar
+                </button>
+              </div>
+            </div>
+
+            <!-- Seleção dos 16 Algoritmos -->
+            <div class="algo-selection-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 0.75rem; margin-top: 1rem;">
+              <label class="algo-checkbox-card selected">
+                <input type="checkbox" name="sim_int_algorithms" value="mapp" checked>
+                <div class="algo-card-content">
+                  <span class="algo-card-icon">🛡️</span>
+                  <div><h4>M.A.P.P. Quant</h4><p>Regime + Estrutura</p></div>
+                </div>
+              </label>
+              <label class="algo-checkbox-card selected">
+                <input type="checkbox" name="sim_int_algorithms" value="ensemble" checked>
+                <div class="algo-card-content">
+                  <span class="algo-card-icon">🤝</span>
+                  <div><h4>Prediction Ensemble</h4><p>Multimodelo adaptativo</p></div>
+                </div>
+              </label>
+              <label class="algo-checkbox-card selected">
+                <input type="checkbox" name="sim_int_algorithms" value="pattern_matching" checked>
+                <div class="algo-card-content">
+                  <span class="algo-card-icon">🔍</span>
+                  <div><h4>Pattern Matching</h4><p>Padrões históricos</p></div>
+                </div>
+              </label>
+              <label class="algo-checkbox-card selected">
+                <input type="checkbox" name="sim_int_algorithms" value="xgboost" checked>
+                <div class="algo-card-content">
+                  <span class="algo-card-icon">⚡</span>
+                  <div><h4>XGBoost</h4><p>Gradient Boosting</p></div>
+                </div>
+              </label>
+              <label class="algo-checkbox-card selected">
+                <input type="checkbox" name="sim_int_algorithms" value="lightgbm" checked>
+                <div class="algo-card-content">
+                  <span class="algo-card-icon">🚀</span>
+                  <div><h4>LightGBM</h4><p>Alta velocidade</p></div>
+                </div>
+              </label>
+              <label class="algo-checkbox-card selected">
+                <input type="checkbox" name="sim_int_algorithms" value="random_forest" checked>
+                <div class="algo-card-content">
+                  <span class="algo-card-icon">🌲</span>
+                  <div><h4>Random Forest</h4><p>Ensemble de árvores</p></div>
+                </div>
+              </label>
+              <label class="algo-checkbox-card selected">
+                <input type="checkbox" name="sim_int_algorithms" value="lstm" checked>
+                <div class="algo-card-content">
+                  <span class="algo-card-icon">🧠</span>
+                  <div><h4>LSTM Recorrente</h4><p>Deep Learning</p></div>
+                </div>
+              </label>
+              <label class="algo-checkbox-card selected">
+                <input type="checkbox" name="sim_int_algorithms" value="gru" checked>
+                <div class="algo-card-content">
+                  <span class="algo-card-icon">⚡</span>
+                  <div><h4>GRU Recorrente</h4><p>Memória gated</p></div>
+                </div>
+              </label>
+              <label class="algo-checkbox-card selected">
+                <input type="checkbox" name="sim_int_algorithms" value="transformer" checked>
+                <div class="algo-card-content">
+                  <span class="algo-card-icon">🔮</span>
+                  <div><h4>Transformer</h4><p>Self-Attention</p></div>
+                </div>
+              </label>
+              <label class="algo-checkbox-card selected">
+                <input type="checkbox" name="sim_int_algorithms" value="arima_sarima" checked>
+                <div class="algo-card-content">
+                  <span class="algo-card-icon">📐</span>
+                  <div><h4>ARIMA / SARIMA</h4><p>Estatístico clássico</p></div>
+                </div>
+              </label>
+              <label class="algo-checkbox-card selected">
+                <input type="checkbox" name="sim_int_algorithms" value="prophet" checked>
+                <div class="algo-card-content">
+                  <span class="algo-card-icon">📈</span>
+                  <div><h4>Prophet</h4><p>Decomposição e feriados</p></div>
+                </div>
+              </label>
+              <label class="algo-checkbox-card selected">
+                <input type="checkbox" name="sim_int_algorithms" value="regressao_linear" checked>
+                <div class="algo-card-content">
+                  <span class="algo-card-icon">📏</span>
+                  <div><h4>Regressão Linear</h4><p>Baseline Ridge</p></div>
+                </div>
+              </label>
+              <label class="algo-checkbox-card selected">
+                <input type="checkbox" name="sim_int_algorithms" value="algoritmo_genetico" checked>
+                <div class="algo-card-content">
+                  <span class="algo-card-icon">🧬</span>
+                  <div><h4>Algoritmo Genético</h4><p>Otimização evolutiva</p></div>
+                </div>
+              </label>
+              <label class="algo-checkbox-card selected">
+                <input type="checkbox" name="sim_int_algorithms" value="mirofish" checked>
+                <div class="algo-card-content">
+                  <span class="algo-card-icon">🐟</span>
+                  <div><h4>MiroFish</h4><p>Multiagente swarm</p></div>
+                </div>
+              </label>
+              <label class="algo-checkbox-card selected">
+                <input type="checkbox" name="sim_int_algorithms" value="rede_neural" checked>
+                <div class="algo-card-content">
+                  <span class="algo-card-icon">🧠</span>
+                  <div><h4>Rede Neural MLP</h4><p>Perceptron multicamadas</p></div>
+                </div>
+              </label>
+              <label class="algo-checkbox-card selected">
+                <input type="checkbox" name="sim_int_algorithms" value="logica_fuzzy" checked>
+                <div class="algo-card-content">
+                  <span class="algo-card-icon">🌊</span>
+                  <div><h4>Lógica Fuzzy</h4><p>Incerteza e pertinência</p></div>
+                </div>
+              </label>
+            </div>
+
+            <!-- Parâmetros de Carteira -->
+            <div class="form-grid" style="margin-top: 1.25rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.08);">
+              <div class="form-group">
+                <label for="sim-int-capital">Capital Inicial</label>
+                <input type="number" id="sim-int-capital" class="form-control" value="10000" min="100" step="500">
+              </div>
+              <div class="form-group">
+                <label for="sim-int-aporte">Aporte Periódico</label>
+                <input type="number" id="sim-int-aporte" class="form-control" value="500" min="0" step="100">
+              </div>
+              <div class="form-group">
+                <label for="sim-int-taxa">Taxa Corretagem (%)</label>
+                <input type="number" id="sim-int-taxa" class="form-control" value="0.05" min="0.0" max="2.0" step="0.01">
+              </div>
+              <div class="form-group">
+                <label for="sim-int-slippage">Slippage (%)</label>
+                <input type="number" id="sim-int-slippage" class="form-control" value="0.02" min="0.0" max="2.0" step="0.01">
+              </div>
+            </div>
+
+            <div style="margin-top: 1.25rem; display: flex; justify-content: flex-end;">
+              <button type="button" id="btn-run-integrated-sim" class="btn btn-primary btn-glow" style="padding: 0.85rem 2rem; font-size: 1.05rem;">
+                <span class="btn-icon">🚀</span>
+                <span>Executar Simulação de Todos os Algoritmos</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Caixa de Progresso em Tempo Real -->
+          <div id="sim-int-progress-box" class="progress-box hidden" style="margin-bottom: 1.5rem;">
+            <div class="progress-info">
+              <span id="sim-int-status-msg" class="status-msg">Iniciando simulação...</span>
+              <span id="sim-int-prog-pct" class="percentage-val">0.0%</span>
+            </div>
+            <div class="progress-bar-bg">
+              <div id="sim-int-progress-fill" class="progress-bar-fill" style="width: 0%"></div>
+            </div>
+            <div class="progress-metrics" style="display: flex; gap: 1.5rem;">
+              <span>Decorrido: <strong id="sim-int-elapsed">00:00:00</strong></span>
+              <span>Restante: <strong id="sim-int-remaining">Calculando...</strong></span>
+            </div>
+          </div>
+
+          <!-- Caixa de Resultados da Simulação -->
+          <div id="sim-int-results-box" class="hidden">
+            <!-- Destaques Executivos -->
+            <div class="kpi-grid" style="margin-bottom: 1.5rem;">
+              <div class="kpi-card" style="background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(56, 189, 248, 0.3);">
+                <div class="kpi-header"><span class="kpi-title">CAMPEÃO GERAL</span></div>
+                <div class="kpi-body"><span id="sim-hl-best" class="kpi-value font-mono" style="font-size: 1.25rem; color: #38bdf8;">—</span></div>
+                <div class="kpi-footer"><span class="kpi-sub">Maior Score Multicritério</span></div>
+              </div>
+              <div class="kpi-card" style="background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(16, 185, 129, 0.3);">
+                <div class="kpi-header"><span class="kpi-title">MENOR DESVIO HOJE</span></div>
+                <div class="kpi-body"><span id="sim-hl-deviation" class="kpi-value font-mono" style="font-size: 1.25rem; color: #10b981;">—</span></div>
+                <div class="kpi-footer"><span class="kpi-sub">Mais aderente à cotação real</span></div>
+              </div>
+              <div class="kpi-card" style="background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(245, 158, 11, 0.3);">
+                <div class="kpi-header"><span class="kpi-title">MAIOR RETORNO</span></div>
+                <div class="kpi-body"><span id="sim-hl-return" class="kpi-value font-mono" style="font-size: 1.25rem; color: #f59e0b;">—</span></div>
+                <div class="kpi-footer"><span class="kpi-sub">Rentabilidade da carteira</span></div>
+              </div>
+              <div class="kpi-card" style="background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(168, 85, 247, 0.3);">
+                <div class="kpi-header"><span class="kpi-title">MAIOR SHARPE</span></div>
+                <div class="kpi-body"><span id="sim-hl-sharpe" class="kpi-value font-mono" style="font-size: 1.25rem; color: #a855f7;">—</span></div>
+                <div class="kpi-footer"><span class="kpi-sub">Retorno ajustado ao risco</span></div>
+              </div>
+              <div class="kpi-card" style="background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(244, 63, 94, 0.3);">
+                <div class="kpi-header"><span class="kpi-title">MENOR DRAWDOWN</span></div>
+                <div class="kpi-body"><span id="sim-hl-drawdown" class="kpi-value font-mono" style="font-size: 1.25rem; color: #f43f5e;">—</span></div>
+                <div class="kpi-footer"><span class="kpi-sub">Preservação de capital</span></div>
+              </div>
+            </div>
+
+            <!-- GRÁFICO GERAL DETALHADO: COMPARATIVO DE DESVIO HOJE (PREVISÃO VS REAL) -->
+            <div class="card chart-card deviation-card" style="margin-bottom: 2rem; border: 1.5px solid rgba(56, 189, 248, 0.35); box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);">
+              <div class="chart-header" style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem;">
+                <div>
+                  <div style="display: flex; align-items: center; gap: 0.75rem;">
+                    <h3 class="card-title" style="margin: 0; font-size: 1.35rem; color: #f8fafc;">📊 Comparativo Geral de Desvio na Data Atual (Hoje)</h3>
+                    <span class="badge-tag" style="background: rgba(16, 185, 129, 0.2); color: #10B981; border: 1px solid rgba(16, 185, 129, 0.4); font-weight: 700;">Validação Mercado Real</span>
+                  </div>
+                  <p class="card-subtitle">Diferença percentual de cada algoritmo em relação ao preço real do ativo na data atual</p>
+                </div>
+                <div class="deviation-quick-stats" id="sim-deviation-quick-stats" style="display: flex; gap: 1rem; flex-wrap: wrap;"></div>
+              </div>
+
+              <div class="chart-canvas-wrapper" style="height: 380px; position: relative; margin-top: 1rem;">
+                <canvas id="sim-chart-deviation-bars"></canvas>
+              </div>
+
+              <div class="deviation-table-wrapper" style="margin-top: 1.5rem;">
+                <div class="table-responsive">
+                  <table class="data-table">
+                    <thead>
+                      <tr>
+                        <th>Rank Hoje</th>
+                        <th>Algoritmo</th>
+                        <th>Previsão IA Hoje</th>
+                        <th>Cotação Real Hoje</th>
+                        <th>Diferença R$ / $</th>
+                        <th>Desvio Hoje (%)</th>
+                        <th>Acurácia Hoje (%)</th>
+                        <th>Direção</th>
+                        <th>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody id="sim-tbody-deviation"></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <!-- ANÁLISE, GRÁFICOS & DOCUMENTOS INDIVIDUAIS POR ALGORITMO -->
+            <div class="card chart-card" style="margin-bottom: 2rem; border: 1px solid rgba(139, 92, 246, 0.35);">
+              <div class="chart-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                <div>
+                  <div style="display: flex; align-items: center; gap: 0.75rem;">
+                    <h3 class="card-title" style="margin: 0; font-size: 1.3rem; color: #f8fafc;">🔬 Análise, Gráficos & Documentos Individuais</h3>
+                    <span class="badge-tag" style="background: rgba(139, 92, 246, 0.2); color: #a78bfa; border: 1px solid rgba(139, 92, 246, 0.4);">Por Algoritmo</span>
+                  </div>
+                  <p class="card-subtitle">Examine a projeção futura com cone de 95%, histórico real e baixe o relatório executivo individual</p>
+                </div>
+                <div style="display: flex; gap: 0.75rem;">
+                  <button type="button" class="btn btn-pdf" id="btn-export-sim-pdf" title="Baixar Relatório Executivo PDF do Algoritmo Selecionado">
+                    <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /><polyline points="10 9 9 9 8 9" /></svg>
+                    <span id="sim-label-btn-pdf">Baixar PDF (.pdf)</span>
+                  </button>
+                  <button type="button" class="btn btn-docx" id="btn-export-sim-docx" title="Baixar Relatório Executivo Word do Algoritmo Selecionado">
+                    <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="12" y1="18" x2="12" y2="12" /><line x1="9" y1="15" x2="15" y2="15" /></svg>
+                    <span id="sim-label-btn-docx">Baixar Word (.docx)</span>
+                  </button>
+                </div>
+              </div>
+
+              <div class="individual-algo-tabs" id="sim-indiv-algo-tabs" style="display: flex; gap: 0.5rem; overflow-x: auto; padding-bottom: 0.5rem; margin-top: 1rem; border-bottom: 1px solid rgba(255,255,255,0.08);"></div>
+
+              <div style="margin-top: 1.5rem;">
+                <div class="kpi-grid" id="sim-indiv-kpi-grid" style="margin-bottom: 1.5rem;"></div>
+
+                <div class="charts-dual-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 1.5rem;">
+                  <div class="card chart-card" style="background: rgba(15, 23, 42, 0.45); border: 1px solid rgba(255,255,255,0.08);">
+                    <h4 class="card-title" style="color: #38bdf8;">Projeção Futura IA vs. Histórico Real</h4>
+                    <p class="card-subtitle">Série recente, ajuste in-sample e cone de 95% de confiança</p>
+                    <div class="chart-canvas-wrapper" style="height: 320px;">
+                      <canvas id="sim-chart-indiv-forecast"></canvas>
+                    </div>
+                  </div>
+
+                  <div class="card chart-card" style="background: rgba(15, 23, 42, 0.45); border: 1px solid rgba(255,255,255,0.08);">
+                    <h4 class="card-title" style="color: #10b981;">Evolução do Capital & Drawdown</h4>
+                    <p class="card-subtitle">Desempenho financeiro líquido sob taxas e slippage</p>
+                    <div class="chart-canvas-wrapper" style="height: 320px;">
+                      <canvas id="sim-chart-indiv-equity"></canvas>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Gráfico Comparativo de Curvas de Capital -->
+            <div class="card chart-card" style="margin-bottom: 2rem;">
+              <div class="chart-header">
+                <h3 class="card-title">Evolução Patrimonial Combinada (Todos os Modelos)</h3>
+                <p class="card-subtitle">Trajetória financeira sob aportes periódicos e custos reais</p>
+              </div>
+              <div class="chart-canvas-wrapper" style="height: 380px;">
+                <canvas id="sim-chart-multi-equity"></canvas>
+              </div>
+            </div>
+
+            <!-- Tabela Completa de Ranqueamento Multicritério -->
+            <div class="card chart-card">
+              <div class="chart-header">
+                <h3 class="card-title">Relatório Comparativo Completo & Ranqueamento Multicritério</h3>
+                <p class="card-subtitle">Classificação ponderando rentabilidade, Sharpe, Drawdown e aderência na data atual</p>
+              </div>
+              <div class="table-responsive" style="margin-top: 1rem;">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Rank</th>
+                      <th>Algoritmo</th>
+                      <th>Capital Final</th>
+                      <th>Lucro Líquido</th>
+                      <th>Retorno (%)</th>
+                      <th>Desvio Hoje (%)</th>
+                      <th>Previsão Hoje</th>
+                      <th>Sharpe</th>
+                      <th>Max DD (%)</th>
+                      <th>Win Rate (%)</th>
+                      <th>RMSE</th>
+                      <th>Score</th>
+                    </tr>
+                  </thead>
+                  <tbody id="sim-tbody-comparative"></tbody>
+                </table>
+              </div>
+            </div>
+
           </div>
         </div>
 
@@ -498,6 +848,7 @@
 
   <!-- Script da Aplicação -->
   <script src="/static/js/app.js"></script>
+  <script src="/static/js/simulator_integrated.js"></script>
 </body>
 
 </html>

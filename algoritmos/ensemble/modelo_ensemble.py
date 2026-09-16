@@ -103,18 +103,21 @@ class ModeloEnsemble(BaseAlgoritmo):
         df_proj_primeiro = primeiro_res["forecast_df"]
         datas_projecao = df_proj_primeiro.index
 
-        projs_ponderadas = np.zeros(len(datas_projecao))
-        inferiores_ponderados = np.zeros(len(datas_projecao))
-        superiores_ponderados = np.zeros(len(datas_projecao))
+        # Agregação robusta ponderada com rejeição de outliers (MAD Filter)
+        matriz_projs = np.array([res["forecast_df"]["Preco_Projetado"].values for res in resultados_individuais.values()])
+        matriz_inf = np.array([res["forecast_df"]["Limite_Inferior"].values for res in resultados_individuais.values()])
+        matriz_sup = np.array([res["forecast_df"]["Limite_Superior"].values for res in resultados_individuais.values()])
+        lista_pesos = np.array([pesos[nome_mod] for nome_mod in resultados_individuais.keys()])
+        lista_pesos = lista_pesos / (np.sum(lista_pesos) + 1e-9)
 
-        soma_pesos = sum(pesos.values())
+        # Truncamento pelo desvio absoluto da mediana (MAD) impedindo distorção
+        mediana_projs = np.median(matriz_projs, axis=0)
+        mad_projs = np.median(np.abs(matriz_projs - mediana_projs), axis=0) + 1e-6
+        matriz_projs_clamped = np.clip(matriz_projs, mediana_projs - (2.5 * mad_projs), mediana_projs + (2.5 * mad_projs))
 
-        for nome_mod, res in resultados_individuais.items():
-            w = pesos[nome_mod] / soma_pesos
-            df_f = res["forecast_df"]
-            projs_ponderadas += w * df_f["Preco_Projetado"].values
-            inferiores_ponderados += w * df_f["Limite_Inferior"].values
-            superiores_ponderados += w * df_f["Limite_Superior"].values
+        projs_ponderadas = np.average(matriz_projs_clamped, axis=0, weights=lista_pesos)
+        inferiores_ponderados = np.average(matriz_inf, axis=0, weights=lista_pesos)
+        superiores_ponderados = np.average(matriz_sup, axis=0, weights=lista_pesos)
 
         df_proj_final = pd.DataFrame({
             "Preco_Projetado": projs_ponderadas,

@@ -10,7 +10,7 @@ Plataforma quantitativa de nível institucional para análise técnica automatiz
 - **M.A.P.P. Proprietary Engine**: Modelo de 4 pilares (Regime de Mercado, Estrutura e Acumulação, Padrões Técnicos, Momento & Divergências) com estimativa probabilística de direção, magnitude esperada e intervalo de confiança a 95%.
 - **Classificador de 8 Regimes de Mercado**: Detecção dinâmica de `BULL_TREND`, `BEAR_TREND`, `SIDEWAYS`, `HIGH_VOLATILITY`, `LOW_VOLATILITY`, `BREAKOUT`, `CRASH` e `RECOVERY`.
 - **Pipeline de Características Anti-Vazamento (Anti-Data-Leakage)**: Mais de 70 indicadores calculados estritamente com defasagens causais sem olhar para o futuro (`ValidadorAntiVazamento` e `SeletorCaracteristicas`).
-- **Simulador de Investimentos Multi-Algoritmo (`/portfolio-simulator`)**: Wizard interativo em 5 etapas para comparação simultânea de múltiplos modelos, curvas de patrimônio (Equity Curve), Drawdown dinâmico, dispersão Risco x Retorno e ranqueamento multicritério ponderado.
+- **Simulador de Investimentos Multi-Algoritmo (Integrado na Página Principal)**: Painel interativo para comparação simultânea de todos os 16 algoritmos de IA, curvas de patrimônio (Equity Curve), Drawdown, comparativo geral detalhado de desvio na data atual (preço projetado vs. preço real) e relatórios individuais (PDF e DOCX).
 - **Temporização Real e Transparente (`ProgressTracker`)**: Cálculo exato de tempo decorrido, tempo restante estimado e tempo total estimado no formato `HH:MM:SS` baseado no consumo real de ciclos (`time.perf_counter()`), sem animações estáticas ou contadores fictícios.
 - **Normalização de Horizontes Flexíveis (`ForecastHorizon`)**: Suporte a dias, semanas, meses e anos com distinção rigorosa entre calendário de dias úteis da B3/bolsas tradicionais e mercado ininterrupto (24/7) de criptoativos.
 - **Armazenamento e Cache Histórico em Excel (`db/`)**: Armazenamento automático e reutilização inteligente de bases históricas em arquivos `.xls` (ex: `db/bitcoin.xls`).
@@ -30,7 +30,7 @@ graph TD
     F --> G[BacktestEngine: Walk-Forward Validation]
     G --> H[CalculadorMetricas: Sharpe, Sortino, MaxDD, WinRate]
     H --> I[Web Dashboard Flask & Interactive Charts]
-    H --> J[Simulador de Investimentos /portfolio-simulator]
+    H --> J[Simulador Multi-IA Integrado & Desvio Hoje]
     H --> K[Exportador Executivo PDF / Word DOCX]
 ```
 
@@ -96,8 +96,7 @@ python main.py
 # Ou execute diretamente o backend web:
 python web_app.py
 ```
-- **Painel Preditivo Principal**: [http://127.0.0.1:5000](http://127.0.0.1:5000)
-- **Simulador de Investimentos M.A.P.P.**: [http://127.0.0.1:5000/portfolio-simulator](http://127.0.0.1:5000/portfolio-simulator)
+- **Painel Preditivo & Simulador Multi-IA**: [http://127.0.0.1:5000](http://127.0.0.1:5000)
 
 ### 4. Execução da Suíte de Testes Automatizados
 ```bash
