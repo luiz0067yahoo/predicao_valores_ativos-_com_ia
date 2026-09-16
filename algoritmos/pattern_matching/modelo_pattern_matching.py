@@ -64,7 +64,7 @@ class ModeloPatternMatching(BaseAlgoritmo):
         candidatos_indices = []
 
         # Tendência macro do padrão atual para filtragem de regime
-        sma50_atual = np.mean(close[-min(50, n_pontos):])
+        sma50_atual = np.mean(close[-min(50, n):])
         dist_sma50_atual = (close[-1] - sma50_atual) / (sma50_atual + 1e-9)
 
         for i in range(0, limite_busca):
@@ -116,7 +116,9 @@ class ModeloPatternMatching(BaseAlgoritmo):
         limites_inferiores = []
         limites_superiores = []
 
-        desvio_padrao_residuos = float(np.std(close[-min(30, n):].pct_change().dropna()) if n >= 10 else 0.02) * preco_base_atual
+        sub_close = close[-min(30, n):]
+        rets_recente = np.diff(sub_close) / (sub_close[:-1] + 1e-9) if len(sub_close) > 1 else np.array([0.02])
+        desvio_padrao_residuos = float(np.std(rets_recente) if len(rets_recente) > 0 else 0.02) * preco_base_atual
 
         for t in range(horizonte_projecao):
             if len(trajetorias_matriz) > 0 and t < trajetorias_matriz.shape[1]:

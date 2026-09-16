@@ -17,7 +17,6 @@ import pandas as pd
 from mapp.backtesting.engine import BacktestEngine
 from mapp.horizon import ForecastHorizon, NormalizadorHorizonte
 from mapp.tracker import ProgressTracker
-from algoritmos.fabrica_algoritmos import FabricaAlgoritmos, CATALOGO_ALGORITMOS
 
 
 class InvestmentSimulator:
@@ -54,6 +53,8 @@ class InvestmentSimulator:
         Executa a simulação para cada algoritmo sob condições estritamente idênticas.
         Gera métricas de carteira, projeção e desvio em relação à cotação real de hoje.
         """
+        from algoritmos.fabrica_algoritmos import FabricaAlgoritmos, CATALOGO_ALGORITMOS
+
         if not algoritmos_selecionados:
             algoritmos_selecionados = list(CATALOGO_ALGORITMOS.keys())
 

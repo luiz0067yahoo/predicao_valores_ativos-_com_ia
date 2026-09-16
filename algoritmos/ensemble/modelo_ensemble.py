@@ -134,6 +134,7 @@ class ModeloEnsemble(BaseAlgoritmo):
         if indices_comuns is None or len(indices_comuns) == 0:
             indices_comuns = primeiro_res["history_df"].index
 
+        soma_pesos = sum(pesos[nome_mod] for nome_mod in resultados_individuais.keys()) or 1.0
         previsoes_hist_ponderadas = pd.Series(0.0, index=indices_comuns)
         for nome_mod, res in resultados_individuais.items():
             w = pesos[nome_mod] / soma_pesos
